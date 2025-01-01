@@ -22,6 +22,27 @@ class C(BaseConstants):
     IS_TEST = True
     DESICION_TIMEOUT = 15
     PENALTY = cu(5)
+    PAYOFF_MATRIX = {
+        'PD': {
+            (False, True): 30,
+            (True, True): 20,
+            (False, False): 10,
+            (True, False): 0,
+            },
+        'CG': {
+            (False, True): 0,
+            (True, True): 20,
+            (False, False): 10,
+            (True, False): 30,
+            },
+        'pPD': {  # behavioralPD_evPD
+            (False, True): [25, .9, 75],
+            (True, True): [17, .5, 23],
+            (False, False): 10,
+            (True, False): [5, .9, -45],            
+        }
+    }
+
     # SHOW_UP_FEE = 5
     # BONUS_FEE = 5
     INSTRUCTIONS_TEMPLATE = 'prisoner/instructions.html'
@@ -65,11 +86,11 @@ class Player(BasePlayer):
     opponent_id_in_session = models.StringField(initial='')
     game_type = models.StringField(initial='')
     forgone_payoff = models.CurrencyField()
+    rnd_num_for_payoff = models.FloatField()
     opponent_cooperate = models.BooleanField()
     opponent_payoff = models.CurrencyField()
     opponent_number = models.StringField(initial='A')
     super_game_round_number = models.IntegerField()
-    decision_time = models.FloatField()
     penalty = models.CurrencyField(initial=0)
     opponent_penaly = models.CurrencyField(initial=0)
     total_score = models.CurrencyField(initial=0)
@@ -77,9 +98,13 @@ class Player(BasePlayer):
     chance_to_win_bonus = models.FloatField()
     win_bonus = models.BooleanField()
     total_experiment_payoffGDP = models.FloatField()
-    is_pass = models.IntegerField(label='   ')
+    subsequent_timeoutes = models.IntegerField(initial=0)
+    decision_time = models.FloatField()
+    results_time = models.FloatField()
     experiment_start_time = models.FloatField()
     experiment_end_time = models.FloatField()
+    is_pass = models.IntegerField(label='   ')
+    is_dropout = models.BooleanField(initial=False)
 def other_player(player: Player):
     return player.get_others_in_group()[0]
 def set_payoff(player: Player):
@@ -87,77 +112,42 @@ def set_payoff(player: Player):
         return  # for the last 3 rounds of risk preferences survey
     
     other = other_player(player)
-    print(player.id_in_group, other.id_in_group)
-    if player.game_type == "PD":
-        payoff_matrix = {
-                (False, True): C.PAYOFF_DC,
-                (True, True): C.PAYOFF_CC,
-                (False, False): C.PAYOFF_DD,
-                (True, False): C.PAYOFF_CD,
-        }
-        player.payoff = payoff_matrix[(player.cooperate, other.cooperate)]
-        player.forgone_payoff = payoff_matrix[(not player.cooperate, other.cooperate)]
-        player.opponent_payoff = payoff_matrix[(other.cooperate, player.cooperate)]
-        print('payoff is:',player.payoff, 'opponents:', player.opponent_payoff)
-    
-    if player.game_type == "CG":
-        payoff_matrix = {
-                (False, True): C.PAYOFF_CD,
-                (True, True): C.PAYOFF_CC,
-                (False, False): C.PAYOFF_DD,
-                (True, False): C.PAYOFF_DC,
-        }
-        player.payoff = payoff_matrix[(player.cooperate, other.cooperate)]
-        player.forgone_payoff = payoff_matrix[(not player.cooperate, other.cooperate)]
-        player.opponent_payoff = payoff_matrix[(other.cooperate, player.cooperate)]
-    
-    
-    if player.game_type == "pPD":
-        payoff_matrix = {
-                (False, True): [C.PAYOFF_DC_HIGH, 1-C.PAYOFF_DC_PROB_LOW, C.PAYOFF_DC_LOW],
-                (True, True): [C.PAYOFF_CC, 1, 1],
-                (False, False): [C.PAYOFF_DD, 1, 1],
-                (True, False): [C.PAYOFF_CD_HIGH, C.PAYOFF_CD_PROB_HIGH, C.PAYOFF_CD_LOW],
-        }
-        payoff_values = payoff_matrix[(player.cooperate, other.cooperate)]
-        opponent_values = payoff_values = payoff_matrix[(other.cooperate, player.cooperate)]
-        forgone_values = payoff_matrix[(not player.cooperate, other.cooperate)]
-        player.payoff = payoff_values[0] if random.random()<payoff_values[1] else payoff_values[2]
-        player.forgone_payoff = forgone_values[0] if random.random()<forgone_values[1] else forgone_values[2]
-        player.opponent_payoff = opponent_values[0] if random.random()<opponent_values[1] else opponent_values[2]
-    
-    if player.game_type == "pCG":
-        payoff_matrix = {
-                (True, False): [C.PAYOFF_DC_HIGH, 1-C.PAYOFF_DC_PROB_LOW, C.PAYOFF_DC_LOW],
-                (True, True): [C.PAYOFF_CC, 1, 1],
-                (False, False): [C.PAYOFF_DD, 1, 1],
-                (False, True): [C.PAYOFF_CD_HIGH, C.PAYOFF_CD_PROB_HIGH, C.PAYOFF_CD_LOW],
-        }
-        payoff_values = payoff_matrix[(player.cooperate, other.cooperate)]
-        opponent_values = payoff_values = payoff_matrix[(other.cooperate, player.cooperate)]
-        forgone_values = payoff_matrix[(not player.cooperate, other.cooperate)]
-        player.payoff = payoff_values[0] if random.random()<payoff_values[1] else payoff_values[2]
-        player.forgone_payoff = forgone_values[0] if random.random()<forgone_values[1] else forgone_values[2]
-        player.opponent_payoff = opponent_values[0] if random.random()<opponent_values[1] else opponent_values[2]
+    player.rnd_num_for_payoff = random.random() if player.field_maybe_none('rnd_num_for_payoff') is None else player.rnd_num_for_payoff
+    other.rnd_num_for_payoff = random.random() if other.field_maybe_none('rnd_num_for_payoff') is None else other.rnd_num_for_payoff
+
+    def calculate_payoff(payoff_val, random_treshold):
+        if type(payoff_val) == list:  # Returns the payoff based on a random draw and the given probabilities
+               # sets both rnd tresholds to ensure opponent's payoff is calculated accuratly
+            return payoff_val[0] if random_treshold < payoff_val[1] else payoff_val[2]
+        else:
+            return payoff_val
+
+    payoff_matrix = C.PAYOFF_MATRIX[player.game_type]        
+    player.payoff = calculate_payoff(payoff_matrix[ (player.cooperate, other.cooperate) ], player.rnd_num_for_payoff)
+    player.forgone_payoff = calculate_payoff(payoff_matrix[ (not player.cooperate, other.cooperate) ], player.rnd_num_for_payoff)
+    player.opponent_payoff = calculate_payoff(payoff_matrix[ (other.cooperate, player.cooperate) ], other.rnd_num_for_payoff)
     
     player.payoff = player.payoff - player.penalty
-    player.opponent_payoff = player.opponent_payoff - other.penalty
     player.forgone_payoff = player.forgone_payoff - player.penalty
+    player.opponent_penaly = other.penalty
+    player.opponent_payoff = player.opponent_payoff - player.opponent_penaly
     
     player.total_score = player.total_score + player.payoff  # total score is set to previous round when entering desicion page (func 'falues for new round')
-
+    
     # set more info
     player.opponent_id_in_session = str(other.participant.id_in_session)
     player.opponent_cooperate = other.cooperate
-    player.opponent_penaly = other.penalty
+    
+
     
     # value_to_text = lambda v: 'got '+ str(v) if v == 0 else ('gained '+ str(v) if v > 0 else 'lost ' + str(abs(v)))
-    value_to_text = lambda v: 'got '+ str(v)
+    # value_to_text = lambda v: 'got '+ str(v)
     
     return dict(
         payoff=player.payoff,
         forgone=player.forgone_payoff,
         opponent_payoff = player.opponent_payoff,
+        penalty = player.penalty,
     )
     return dict(
         opponent=opponent,
@@ -185,11 +175,15 @@ def values_for_new_round(player: Player):
     player.super_game_round_number = ((player.round_number-1) % C.ROUNDS_PER_SUPERGAME) + 1 # The calculations intends to get round 10 = super_game round 10 instead of 0.
     is_new_opponent = (player.super_game_round_number == 1)
     
+    print('drop', player.is_dropout, player.subsequent_timeoutes)
+    
     if player.round_number > 1:
         #set repeeting values
         player.game_type = player.in_round(1).game_type
         player.opponent_number = player.in_round(player.round_number - 1).opponent_number
         player.total_score = player.in_round(player.round_number - 1).total_score
+        player.subsequent_timeoutes = player.in_round(player.round_number - 1).subsequent_timeoutes
+        player.is_dropout = player.subsequent_timeoutes >= 2
         # set charecter to visualize opponent
         if is_new_opponent:
             player.opponent_number = chr(ord(player.opponent_number)+1) 
@@ -339,22 +333,25 @@ class Introduction(Page):
         )
 class Decision(Page):
     form_model = 'player'
-    form_fields = ['cooperate', 'is_pass']
+    form_fields = ['cooperate', 'is_pass', 'subsequent_timeoutes', 'is_dropout']
 
-    '''
+    
     @staticmethod
     def js_vars(player: Player):
-        return dict(opponent_payoff=player.opponent_payoff)
-    '''
+        return dict(subsequent_timeoutes=player.subsequent_timeoutes,
+                    is_dropout=player.is_dropout)
+    
     
     @staticmethod
     def live_method(player: Player, data):
         # player here is the sender of the msg
-        player.cooperate = data
-        print('received a bid from', player.id_in_group, ':', data, type(data))
+        player.cooperate = data['cooperate']
+        print('received a bid from player', player.id_in_group, ':', data, type(data))
         opponent = other_player(player)
         opponent_cooperate = opponent.field_maybe_none('cooperate')
 
+        player.penalty = C.PENALTY if data['timeout'] else 0
+             
         if opponent_cooperate == None:
             return
 
@@ -470,23 +467,7 @@ class Decision(Page):
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
         set_desicion_time(player) # second run as the page ends
-        
-        #  participant.wait_page_arrival = time.time()
-        
-        if timeout_happened:
-            player.penalty = C.PENALTY
-            action = random.randint(0, 1)
-            player.cooperate = action
-        else:
-            player.penalty = 0
-    @staticmethod
-    def get_timeout_seconds(player: Player):
-        if C.IS_TEST:
-            return 10000
-        if ((player.round_number - 1) % C.ROUNDS_PER_SUPERGAME <= 2):
-            return 2*C.DESICION_TIMEOUT
-        else:
-             return C.DESICION_TIMEOUT
+
 class ResultsWaitPage(WaitPage):
     # after_all_players_arrive = set_payoffs
     @staticmethod
