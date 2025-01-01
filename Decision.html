@@ -1,0 +1,442 @@
+{{ extends 'global/Page.html' }}
+{{ block title }}Choose Your Strategy: Up or Down?{{ endblock }}
+
+{{ block content }}
+
+<style>
+    .p1  {color: blue; font-weight:bold;} 
+    .p2  {color: orange; font-weight:bold;}
+    .p1.col {margin-right: 20px;}
+    .p2.col {margin-right: -20px;}
+    .highlight1 { background-color: rgb(160, 182, 243) !important; }
+    .highlight2 { background-color: rgb(243, 214, 160) !important; }
+    .highlightcell { border-style: solid ; border-width: thick !important; }
+    .result_payoff {font-size: x-large;}
+    .forgone {font-size: larger; color: rgb(63, 63, 219); font-style: italic; text-decoration: line-through;}
+    .opponent_payoff {font-size: smaller;}
+    th, td {transition: .3s;}
+    .col {transition: .5s;}
+    .opacity {opacity: 0; transition: opacity 0.7s;}
+
+    #waiting_container {
+        visibility: hidden; /* Keep the space reserved */
+        opacity: 0;         /* Invisible by default */
+        transition: opacity 0.7s; /* Smooth fade-in/out */
+        text-align: center;
+    }
+    #waiting_container.visible {
+        visibility: visible; /* Make visible */
+        opacity: 1;          /* Fully opaque */
+    }
+
+    #AFKoverlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        text-align: center;
+        font-size: 2em;
+        z-index: 1000;
+        display: none;    
+    }
+    #AFKBtn {
+        margin-top: 20px;
+        padding: 10px 20px;
+        font-size: 1em;
+        background: #fff;
+        color: #000;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+
+    #timer {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        font-size: 1em;
+        padding: 10px;
+        background: #f0f0f0;
+        border-radius: 5px;
+    }
+    #timer.blink {
+        animation: blink 0.5s step-start 6;
+    }
+    @keyframes blink {
+        50% {
+            opacity: 0;
+        }
+    }
+        /* Spinner animation */
+    @keyframes spin {
+        0% {
+            transform: rotate(0deg);
+        }
+        100% {
+            transform: rotate(360deg);
+        }
+    }
+</style>
+
+{{formfield_errors 'cooperate' }}
+<div id="timer">Time left: 15</div>
+<div id="AFKoverlay">
+    <div><p>You have not been active for a while, thus random actions are chosen on your behalf. If you will not be active in time, you will not get payoff for the experiment. Please press here to return to the experiment.</p>
+    <button id="AFKBtn" onclick="dropout_handler(true)">Return to Experiment</button></div>
+</div>
+
+</div>
+{{ if player.round_number > 1 }}
+
+    {{ if is_new_opponent }}
+
+        Congradulations! you completed a super game. <br>
+        You are now matched with a <b>another player</b>. <br>
+        Choose your first action in the game with him. <br>
+
+    {{ endif }}
+
+{{ endif }}
+
+<!-- Wait for Other player msg -->
+<div id="waiting_container" style="visibility: hidden; text-align: center; margin-top: 20px;">
+    <div style="display: flex; justify-content: center; align-items: center; gap: 10px;">
+            <!-- Spinning Loader -->
+        <div class="spinner" style="width: 24px; height: 24px; border: 3px solid #ccc; border-top: 3px solid #007BFF; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <!-- Waiting Message -->
+        <span id="waiting_info" style="color: #555; font-size: 1.2em; font-weight: bold; transition: opacity 0.7s;">
+            Waiting for the other player to choose their action...
+        </span>
+    </div>
+</div>
+
+<!-- General Game Info -->
+<div style='display: flex; justify-content: space-between; font-size: 1.25em; padding: 0px 20px 0px 20px;'>
+    <span>
+    <b>Round {{player.super_game_round_number}} of {{C.ROUNDS_PER_SUPERGAME}}</b>
+    Now playing with <b>Player #{{player.opponent_number}}</b>
+    </span>
+</div>
+
+<!-- Payoffs and Decision table -->
+<div class="form-group required">
+    <table id="table1" class="table table-bordered text-center" style="width: auto; margin: auto">
+        <colgroup>
+            <col style="width:15%">
+            <col style="width:15%">
+            <col style="width:33%">
+            <col style="width:33%">
+        </colgroup>  
+
+        <tr class="p2">
+            <th colspan="2" rowspan="2"></th>
+            <th colspan="2">Other player</th>
+        </tr>
+        <tr class="p2">
+            <th>LEFT</th>
+            <th>RIGHT</th>
+        </tr>
+        <tr>
+            <th rowspan="2" class="p1" id="you_cell"><span>You</span></th>
+            <td><button name="cooperate" value="True" class="btn btn-primary btn-large" id='cooperateBtn' onclick="action_clicked(this)">Choose<br>UP</button></td>
+            <td><div class="p1 col">{{ t_left.CC}}</div><br><div class="p2 col">{{t_right.CC}}</div></td>
+            <td><div class="p1 col">{{ t_left.CD }}</div><br><div class="p2 col">{{t_right.CD}}</div></td>
+        </tr>
+        <tr>
+            <td><button name="cooperate" value="False" class="btn btn-primary btn-large" id='defectBtn' onclick="action_clicked(this)">Choose<br>DOWN</button></td>
+            <td><div class="p1 col">{{t_left.DC}}</div><br><div class="p2 col">{{ t_right.DC }}</div></td>
+            <td><div class="p1 col">{{t_left.DD}}</div><br><div class="p2 col">{{t_right.DD}}</div></td>
+        </tr>
+    </table>
+</div>
+
+<div id="next_button_container" style="opacity: 0; width: 80%; margin: 0 auto; text-align: center;">
+    <button class="otree-btn-next btn btn-primary btn-large" style="width: 80%;" disabled>Next</button>
+</div>
+
+<!-- historical payoffs table -->
+<div id="history table" class="hidden_info card mb-2 card-body bg-light">
+    {{ if player.round_number > 1 }}
+
+        {{ if is_new_opponent }}
+
+            Note that this is a new opponent, so no history is presented yet. <br>
+
+        {{ else }}
+
+            <table class="table" style='text-align: center;'>
+                Game History with current opponent:
+            <tr>
+                <th>Round<br>Number</th>
+                <th>Your<br>Action</th>
+                <th>Your<br>Payoff</th>
+                <th>Payoff Had You<br>Chosen Differently</th>
+                <th>Opponent's<br>Action</th>
+                <th>Opponent's<br>Payoff</th>
+            </tr>
+
+            {{ for past_player in history }}
+                <tr>
+                    <td>{{ past_player.super_game_round_number}}</td>
+                    <td>{{ if past_player.cooperate }}UP{{ else }}DOWN{{ endif }}</td>
+                    <td>{{ past_player.payoff }}{{ if past_player.penalty > 0}} <i>(inc. penalty)</i>{{ endif }}</td> 
+                    <td>{{ past_player.forgone_payoff}}{{ if past_player.penalty > 0}} <i>(inc. penalty)</i>{{ endif }}</td> 
+                    <td>{{ if past_player.opponent_cooperate }}LEFT{{ else }}RIGHT{{ endif }}</td>
+                    <td>{{ past_player.opponent_payoff }}</td>
+
+                </tr>
+            {{ endfor }}
+            </table>
+        {{ endif }}
+
+    {{ endif }}
+</div>
+
+<div id="hidden div" style="display: none;">
+    {{ formfield 'is_pass' }}
+    {{ formfield 'cooperate' }}
+    {{ formfield 'subsequent_timeoutes'}}
+    {{ formfield 'is_dropout'}}
+</div>
+
+
+
+
+
+<script>
+    let timerElement = document.getElementById('timer');
+    let countdown = 5;
+    let results_time = 20000;
+    let timerInterval;
+    const nextButton = document.querySelector('.otree-btn-next');
+    forminputs.subsequent_timeoutes.value = js_vars.subsequent_timeoutes
+    
+    // Start the timer on page load
+    startTimer();
+    // ensures the random action is invoked after page is loaded so that livesend will work
+    if (document.readyState === 'complete' || document.readyState === 'interactive') {
+        dropout_handler()
+    } else {
+        document.addEventListener('DOMContentLoaded', function () {dropout_handler()})         
+    }
+    
+    function dropout_handler(player_is_back=false) {
+        console.log('dropout_handler', player_is_back)
+        const AFK_overlay_div = document.getElementById('AFKoverlay')
+        if (player_is_back){
+            js_vars.is_dropout = false;
+            forminputs.subsequent_timeoutes.value = 0;
+            forminputs.is_dropout.value = false;
+            AFK_overlay_div.style.display = 'none';
+        } else {
+            setTimeout(() => {
+                if (js_vars.is_dropout) {
+                    AFK_overlay_div.style.display='block';
+                    play_random_action();
+                }
+            } , 500) //0.5sec to let player press his back
+        }        
+    }
+    function startTimer() {
+        timerElement.style.display = 'block';
+        timerInterval = setInterval(() => {
+            countdown--;
+            updateTimerDisplay();
+
+            if (countdown <= 3) {
+                timerElement.classList.add('blink');
+            }
+
+            if (countdown <= 0) {
+                clearInterval(timerInterval);
+                onTimerEnd();
+            }
+        }, 1000);
+    }
+    function updateTimerDisplay() {
+        timerElement.textContent = `Time left: ${countdown}`;
+    }
+    function onTimerEnd() {
+        forminputs.subsequent_timeoutes.value = parseInt(forminputs.subsequent_timeoutes.value) + 1;
+        if (forminputs.is_pass.value) { // than player is on results - click next
+            nextButton.click()
+        }
+        else { // player is on decision - submit random desicion 
+            play_random_action()
+        }
+    }
+    function resetTimer(newTimeSeconds) {
+        clearInterval(timerInterval);
+        countdown = newTimeSeconds;
+        timerElement.classList.remove('blink');
+        updateTimerDisplay();
+        startTimer();
+    };
+    function stopTimer() {
+        clearInterval(timerInterval);
+        timerElement.style.display = 'none';
+    }
+    function play_random_action(){
+        let rnd_cooperate = Math.random() < 0.5
+        function random_click(rnd_cooperate){
+            if (rnd_cooperate) {
+                action_clicked(document.getElementById('cooperateBtn'), false)
+            } else {
+                action_clicked(document.getElementById('defectBtn'), false)
+            }
+        }
+        // ensures the random action is invoked after page is loaded so that livesend will work
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            random_click(rnd_cooperate)
+        } else {
+            document.addEventListener('DOMContentLoaded', function () {random_click(rnd_cooperate)})         
+        }
+    }
+
+    function action_clicked(button, user_click=true) { //called when btn clicked
+        stopTimer()
+        is_timeout = !(countdown>0)
+
+        forminputs.cooperate.value = button.value;
+
+        if (!is_timeout && user_click) {forminputs.subsequent_timeoutes.value = 0;} // resets timeoutes 
+            // sending choice to the server
+        liveSend({'cooperate': button.value=='True', 'timeout': is_timeout});
+        
+            // Highligh selected row
+        const button_cell = button.closest('td');
+        button_cell.classList.add('highlight1');
+        
+            // disable buttons    
+        const buttons = document.querySelectorAll('button[name="cooperate"]');
+        buttons.forEach(btn => btn.disabled = true);
+
+        showWaitingMessage()
+    }
+
+    function display_resutls(me_cooperate, opponent_cooperate, payoffs_dict){
+        resetTimer(results_time) // time to see results
+        hideWaitingMessage()
+           
+        const dtable = document.getElementById('table1')
+        const resultRowIndex = me_cooperate ? 0 : 1;
+        const resultColIndex = opponent_cooperate ? 0 : 1;  
+
+            // highligh col
+        var cell = dtable.rows[1].cells[resultColIndex];
+        cell.classList.add("highlight2")
+            
+            // replace table text to results
+        let value_to_text = function(v) {return (String(v) + ' points')};
+        const payoff_text = value_to_text(payoffs_dict.payoff)
+        const forgone_payoff_text = value_to_text(payoffs_dict.forgone)
+        const opponents_payoff_text = value_to_text(payoffs_dict.opponent_payoff)
+
+            // iterate table cells to replace/delete text
+        for (var i = 0, row; row = dtable.rows[i]; i++) {
+            for (var j = 0, col; col = row.cells[j]; j++) {
+                var my_payoff_div = [...dtable.rows[i].cells[j].querySelectorAll(".col.p1")][0]
+                var opponents_payoff_div = [...dtable.rows[i].cells[j].querySelectorAll(".col.p2")][0]
+                
+                if (my_payoff_div==undefined){
+                    continue
+                }
+
+
+
+                let results_first_line_index = 2
+                let is_longer_table_line = (i==results_first_line_index)? 1 : 0; // Because 3rd row has 4 cols, while 4th row has 3 cols 
+                let my_selection_col = resultColIndex+1+is_longer_table_line
+                let my_selection_row = results_first_line_index + resultRowIndex
+                
+                if (j==my_selection_col) { // then results and forgone payoff goes here
+                    my_payoff_div.innerHTML = (i==my_selection_row)? payoff_text : forgone_payoff_text;
+                    if (i == my_selection_row) {
+                        opponents_payoff_div.innerHTML = opponents_payoff_text;
+                        opponents_payoff_div.classList.add('opponent_payoff')
+                        my_payoff_div.classList.add('result_payoff')
+                        col.classList.add('highlightcell')
+                    }
+                    else {
+                        my_payoff_div.classList.add('forgone')
+                        opponents_payoff_div.classList.add('opacity');
+                    }
+                }
+                else { // neither selection of forgone cells
+                    my_payoff_div.classList.add('opacity');
+                    opponents_payoff_div.classList.add('opacity');
+                }
+            }
+        }
+        
+            // add 'Next' button
+        nextdiv = document.getElementById('next_button_container')
+        next_button = nextdiv.querySelector(".otree-btn-next")
+        next_button.disabled = false;
+        document.getElementById('id_is_pass').value = 1;
+        
+        setTimeout(() => {
+            nextdiv.style.display = "block";
+            nextdiv.style.transition = "opacity 0.5s";
+            nextdiv.style.opacity = "1";
+            if (js_vars.is_dropout) {nextButton.click()}
+        }, 500)
+        
+
+            // add short text and delet results.html
+    }
+
+    function onLoad () {
+        // in case player refreshed the page:
+        //if player.cooperate != null, then he already made some desicion - thus disable buttons, if he already has a payoff for that round call 'display results'
+        return
+    }
+
+    // automatically called each time a message is received from the server.
+    function liveRecv(data) {
+        // data is a dict I send from the init_ file
+        // data should be {'cooperate': boolean value, 'sender_id_in_group': player.id_in_group, 'opponent_cooperate': opponent_cooperate, }
+        // todo: 
+        //       -. finish writing 'display results' function
+        //       -. update timer
+        //       4. reduce times to 10 second action action/results. + 2 timeouts = drop out player (give him botton to say 'im back' bu until then he is replaced with random choice. dropout players Results page time should be set to 1 sec)
+        //       5. handle when page gets refreshed - on load - check if action was already made, and if there are already results to display
+        
+        if (data.opponent_cooperate == null ) {
+            return;  //since we have data for 1 player only
+        }
+        console.log('data:', data)
+        display_resutls( data.cooperate ,data.opponent_cooperate, data.payoffs_dict)
+        if (js_vars.is_dropout && (data.payoffs_dict.penalty > 0)){nextButton.click()}
+    }
+
+    // --- wait for other player masseges ---
+    function showWaitingMessage() {
+        const waitingContainer = document.getElementById('waiting_container');
+        waitingContainer.classList.add('visible'); // Show message
+    }
+
+    function hideWaitingMessage() {
+        const waitingContainer = document.getElementById('waiting_container');
+        waitingContainer.classList.remove('visible'); // Hide message
+    }
+
+    document.addEventListener('keydown', function (event) {
+        let nextButton = document.querySelector('.otree-btn-next');
+        
+        if (event.key === 'Enter' || event.key === 'Backspace') {
+            //event.preventDefault(); // Prevent default browser behavior (scrolling down on backspace)
+            if (nextButton) {
+                nextButton.click(); // Simulate button click
+            }
+        }
+    });
+</script>
+
+{{ endblock }}
