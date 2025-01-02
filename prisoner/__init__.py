@@ -19,10 +19,11 @@ class C(BaseConstants):
     PAYOFF_CD_HIGH = cu(30)
     PAYOFF_CD_LOW = cu(-270)
     PAYOFF_CD_PROB_HIGH = 0.9
+    PENALTY = cu(5)
     IS_TEST = True
     DESICION_TIMEOUT = 150
-    PENALTY = cu(5)
     RANDOM_MATCHING = True
+    NO_DESCRIPTION = True
     PAYOFF_MATRIX = {
         'PD': {
             (False, True): 30,
@@ -216,7 +217,7 @@ class InformedConsentPage(Page):
 class Introduction(Page):
     @staticmethod
     def is_displayed(player: Player):
-        return player.round_number == 1 and not C.IS_TEST
+        return player.round_number == 1 # and not C.IS_TEST
     @staticmethod
     def vars_for_template(player: Player):
         import time
@@ -283,6 +284,11 @@ class Introduction(Page):
                     else:
                         text_left[f"{ti}{tj}"] = f'{payoff_matrix[(i,j)]}'  #player
                         text_right[f"{ti}{tj}"] = f'{payoff_matrix[(j,i)]}' #opponent
+                        
+                        # _______<< only for introduction >>__________
+                        text_desc_player[f"{ti}{tj}"] = f'{value_to_text(payoff_matrix[(i,j)])} '  #player
+                        text_desc_other[f"{ti}{tj}"] = f'{value_to_text(payoff_matrix[(j,i)])} '  #opponent
+                        # _______<< end of 'only for introduction' >>______
         
         
         else:  # game is Deterministic version
@@ -299,13 +305,26 @@ class Introduction(Page):
                     text_desc_other[f"{ti}{tj}"] = f'{value_to_text(payoff_matrix[(j,i)])} '  #opponent
                     # _______<< end of 'only for introduction' >>______
         
+        if C.NO_DESCRIPTION:
+            text_left['CC'] = 'Up'
+            text_left['CD'] = 'Up'
+            text_left['DC'] = 'Down'
+            text_left['DD'] = 'Down'
+
+            text_right['CC'] = 'Left'
+            text_right['CD'] = 'Right'
+            text_right['DC'] = 'Left'
+            text_right['DD'] = 'Right'
         # << end of copy from Desicion >>
-        
+
         return dict(
             t_left = text_left,
             t_right = text_right,
             desc_player = text_desc_player,
             desc_other = text_desc_other,
+            is_random_matching = C.RANDOM_MATCHING,
+            is_description = (not C.NO_DESCRIPTION),
+            number_of_rounds = C.NUM_ROUNDS,
             show_up_fee = int(player.session.config['participation_fee']),
             bonus_fee = player.session.config['bonus_payment'],
         )
@@ -439,15 +458,16 @@ class Decision(Page):
                     text_left[f"{ti}{tj}"] = f'{payoff_matrix[(i,j)]}'
                     text_right[f"{ti}{tj}"] = f'{payoff_matrix[(j,i)]}'
         
-        text_left['CC'] = 'Up'
-        text_left['CD'] = 'Up'
-        text_left['DC'] = 'Down'
-        text_left['DD'] = 'Down'
+        if C.NO_DESCRIPTION:
+            text_left['CC'] = 'Up'
+            text_left['CD'] = 'Up'
+            text_left['DC'] = 'Down'
+            text_left['DD'] = 'Down'
 
-        text_right['CC'] = 'Left'
-        text_right['CD'] = 'Right'
-        text_right['DC'] = 'Left'
-        text_right['DD'] = 'Right'
+            text_right['CC'] = 'Left'
+            text_right['CD'] = 'Right'
+            text_right['DC'] = 'Left'
+            text_right['DD'] = 'Right'
 
         # << end copy to introduction >>
 
@@ -477,32 +497,7 @@ class ResultsWaitPage(WaitPage):
             return False
         else:
             return True
-class Results(Page):
-    @staticmethod
-    def vars_for_template(player: Player):
-        opponent = other_player(player)
-        player.opponent_id_in_session = str(opponent.participant.id_in_session)
-        player.opponent_cooperate = opponent.cooperate
-        player.opponent_payoff = opponent.payoff
-        player.opponent_penaly = opponent.penalty
-        
-        # value_to_text = lambda v: 'got '+ str(v) if v == 0 else ('gained '+ str(v) if v > 0 else 'lost ' + str(abs(v)))
-        value_to_text = lambda v: 'got '+ str(v)
-        
-        return dict(
-            opponent=opponent,
-            opponent_decision = player.opponent_cooperate,
-            payoff_text = value_to_text(player.payoff),
-            forgone_text = str(player.forgone_payoff),
-            opponent_payoff = value_to_text(opponent.payoff),
-            opponent_penalty = opponent.penalty,
-        )
-    @staticmethod
-    def get_timeout_seconds(player: Player):
-        if ((player.round_number - 1) % C.ROUNDS_PER_SUPERGAME <= 2):
-            return (4/3)*C.DESICION_TIMEOUT
-        else:
-            return (2/3)*C.DESICION_TIMEOUT
+
 class EndOfSuperGame(Page):
     @staticmethod
     def is_displayed(player: Player):

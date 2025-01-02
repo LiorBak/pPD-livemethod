@@ -16,9 +16,15 @@
     .col {flex: 50%;}
 -->
 
-<p>
-    In this study, you will play five games. Each game consists of 10 rounds. In each game, you will be randomly and anonymously paired with another participant in this experiment. You will remain paired with the same participant for all 10 rounds of the game, and will then switch to play the next game with a different participant. You will not be paired with the same participant in more than one game.
-</p> 
+{{ if is_random_matching}}
+    <p>
+        In this study, you will play the same game {{number_of_rounds}} times. In each game, you will be randomly and anonymously paired with another participant in this experiment. You will not be paired with the same participant in two consecutive rounds.
+    </p>
+{{ else }}
+    <p>
+        In this study, you will play five games. Each game consists of 10 rounds. In each game, you will be randomly and anonymously paired with another participant in this experiment. You will remain paired with the same participant for all 10 rounds of the game, and will then switch to play the next game with a different participant. You will not be paired with the same participant in more than one game.
+    </p> 
+{{ endif }}
 
 <h2>
     Actions and Points
@@ -51,19 +57,24 @@
         </tr>
     </table>
 </div>
+{{ if is_description}} <!-- explain table content-->
+    <p>
+        This shows:
+        <ul>
+            <li>If you choose UP and the other player chooses LEFT, <span class="p1">you</span> will <span class="p1">{{ desc_player.CC }}</span>.<br>The <span class="p2">other player</span> will also <span class="p2">{{ desc_other.CC }}</span>.</li><br>
+            <li> If you choose UP and the other player chooses RIGHT, <span class="p1">you</span> will <span class="p1">{{ desc_player.CD }}</span>.<br>The <span class="p2">other player</span> will <span class="p2">{{ desc_other.CD }}</span>.</li><br> 
+            <li> If you choose DOWN and the other player chooses LEFT, <span class="p1">you</span> will <span class="p1">{{ desc_player.DC }}</span>.<br>The <span class="p2">other player</span> will <span class="p2">{{ desc_other.DC }}</span>.</li><br> 
+            <li> If you choose DOWN and the other player chooses RIGHT, <span class="p1">you</span> will <span class="p1">{{ desc_player.DD }}</span>.<br> The <span class="p2">other player</span> will also <span class="p2">{{ desc_other.DD }}</span>.</li>
+        </ul>
 
-<p>
-    This shows:
-    <ul>
-        <li>If you choose UP and the other player chooses LEFT, <span class="p1">you</span> will <span class="p1">gain 20 points</span>.<br>The <span class="p2">other player</span> will also <span class="p2">gain 20 points</span>.</li><br>
-        <li> If you choose UP and the other player chooses RIGHT, <span class="p1">you</span> will <span class="p1">{{ desc_player.CD }}</span>.<br>The <span class="p2">other player</span> will <span class="p2">{{ desc_other.CD }}</span>.</li><br> 
-        <li> If you choose DOWN and the other player chooses LEFT, <span class="p1">you</span> will <span class="p1">{{ desc_player.DC }}</span>.<br>The <span class="p2">other player</span> will <span class="p2">{{ desc_other.DC }}</span>.</li><br> 
-        <li> If you choose DOWN and the other player chooses RIGHT, <span class="p1">you</span> will <span class="p1">gain 10 points</span>.<br> The <span class="p2">other player</span> will also <span class="p2">gain 10 points</span>.</li>
-    </ul>
-
-    <br>The payoff table shown above will be displayed on the screen for the entire duration of the game.
-</p>
-
+        <br>The payoff table shown above will be displayed on the screen for the entire duration of the game.
+    </p>
+{{else}} 
+    <h2> Game Scores</h2>
+    <p>
+        After both you and the other player have chosen your actions, your score will be displayed in the appropriate table cell. The score will depend on your actions and a bit of randomness. Neither you nor the other participants know the exact scoring distribution, but you can learn it as you gain experience in the game.
+    </p>
+{{endif}}
 <h2>
     Decision Time and Feedback
 </h2>
@@ -80,12 +91,17 @@ After both you and the other player make your choices, you will see your payoff 
     In each round, the history of choices and payoffs of both you and the other player will be presented to you, so you can review them before making a new choice.
 </p>
 <h2>
-    Pairs
+    Pairs and Rounds
 </h2>
-<p>
-    After 10 rounds are over, you will get a new partner to play the same game with. Overall, you will be matched with 5 different partners, playing 10 rounds with each (a total of 50 rounds of the game).
-</p>
-
+{{ if is_random_matching }}
+    <p>
+        Each round you will play with a <b>different player</b> who will be chosen at random. The game will be played for {{number_of_rounds}}.
+    </p>
+{{ else }}
+    <p>
+        After 10 rounds are over, you will get a new partner to play the same game with. Overall, you will be matched with 5 different partners, playing 10 rounds with each (a total of 50 rounds of the game).
+    </p>
+{{ endif }}
 <!-- payment info -->
 <h2>
     Payment Info
