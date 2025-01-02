@@ -13,10 +13,12 @@
     .highlightcell { border-style: solid ; border-width: thick !important; }
     .result_payoff {font-size: x-large;}
     .forgone {font-size: larger; color: rgb(63, 63, 219); font-style: italic; text-decoration: line-through;}
+    .forgone_text {color: rgb(63, 63, 219); font-style: italic;}
     .opponent_payoff {font-size: smaller;}
     th, td {transition: .3s;}
     .col {transition: .5s;}
     .opacity {opacity: 0; transition: opacity 0.7s;}
+    .notdisplay {display: none !important;}
 
     #waiting_container {
         visibility: hidden; /* Keep the space reserved */
@@ -85,7 +87,7 @@
 </style>
 
 {{formfield_errors 'cooperate' }}
-<div id="timer">Time left: 15</div>
+<div id="timer">Time left: </div>
 <div id="AFKoverlay">
     <div><p>You have not been active for a while, thus random actions are chosen on your behalf. If you will not be active in time, you will not get payoff for the experiment. Please press here to return to the experiment.</p>
     <button id="AFKBtn" onclick="dropout_handler(true)">Return to Experiment</button></div>
@@ -94,7 +96,7 @@
 </div>
 {{ if player.round_number > 1 }}
 
-    {{ if is_new_opponent }}
+    {{ if is_new_supergame }}
 
         Congradulations! you completed a super game. <br>
         You are now matched with a <b>another player</b>. <br>
@@ -160,23 +162,26 @@
     <button class="otree-btn-next btn btn-primary btn-large" style="width: 80%;" disabled>Next</button>
 </div>
 
+<!-- textual_results -->
+<div id='textual_results' class="hidden_info card mb-2 card-body bg-light notdisplay"><!--generated in JS--></div> 
+
 <!-- historical payoffs table -->
 <div id="history table" class="hidden_info card mb-2 card-body bg-light">
     {{ if player.round_number > 1 }}
 
-        {{ if is_new_opponent }}
+        {{ if is_new_supergame }}
 
             Note that this is a new opponent, so no history is presented yet. <br>
 
         {{ else }}
 
             <table class="table" style='text-align: center;'>
-                Game History with current opponent:
+                Game History {{if is_random_matching}}{{else}} with current opponent{{endif}}:
             <tr>
                 <th>Round<br>Number</th>
                 <th>Your<br>Action</th>
                 <th>Your<br>Payoff</th>
-                <th>Payoff Had You<br>Chosen Differently</th>
+                <th>Forgone<br>Payoff</th>
                 <th>Opponent's<br>Action</th>
                 <th>Opponent's<br>Payoff</th>
             </tr>
@@ -186,7 +191,7 @@
                     <td>{{ past_player.super_game_round_number}}</td>
                     <td>{{ if past_player.cooperate }}UP{{ else }}DOWN{{ endif }}</td>
                     <td>{{ past_player.payoff }}{{ if past_player.penalty > 0}} <i>(inc. penalty)</i>{{ endif }}</td> 
-                    <td>{{ past_player.forgone_payoff}}{{ if past_player.penalty > 0}} <i>(inc. penalty)</i>{{ endif }}</td> 
+                    <td style="text-decoration: line-through;">{{ past_player.forgone_payoff}}{{ if past_player.penalty > 0}} <i>(inc. penalty)</i>{{ endif }}</td> 
                     <td>{{ if past_player.opponent_cooperate }}LEFT{{ else }}RIGHT{{ endif }}</td>
                     <td>{{ past_player.opponent_payoff }}</td>
 
@@ -206,13 +211,10 @@
 </div>
 
 
-
-
-
 <script>
     let timerElement = document.getElementById('timer');
-    let countdown = 5;
-    let results_time = 20000;
+    let countdown = js_vars.desicion_time;
+    let results_time = js_vars.results_time;
     let timerInterval;
     const nextButton = document.querySelector('.otree-btn-next');
     forminputs.subsequent_timeoutes.value = js_vars.subsequent_timeoutes
@@ -245,6 +247,7 @@
     }
     function startTimer() {
         timerElement.style.display = 'block';
+        updateTimerDisplay()
         timerInterval = setInterval(() => {
             countdown--;
             updateTimerDisplay();
@@ -374,6 +377,8 @@
                 }
             }
         }
+
+        set_textual_results(me_cooperate, opponent_cooperate, payoffs_dict.payoff, payoffs_dict.forgone, payoffs_dict.opponent_payoff, payoffs_dict.penalty) 
         
             // add 'Next' button
         nextdiv = document.getElementById('next_button_container')
@@ -391,6 +396,36 @@
 
             // add short text and delet results.html
     }
+
+    function set_textual_results(cooperate, opponent_cooperate, payoff, forgone, opponent_payoff, penalty) {
+        const value_to_text = (v) => v === 0 ? `got ${v}` : (v > 0 ? `gained ${v}` : `lost ${Math.abs(v)}`);
+        const forgone_value_to_text = (v) => v === 0 ? `gotten ${v}` : (v > 0 ? `gained ${v}` : `lost ${Math.abs(v)}`);
+        const text_div = document.getElementById('textual_results');
+
+        const payoff_text = value_to_text(payoff);
+        const forgone_text = forgone_value_to_text(forgone);
+        const opponent_payoff_text = value_to_text(opponent_payoff);
+
+        let text = `
+            <p>
+                ${penalty === 0 ? 
+                `You chose <b><span class="p1">${cooperate ? 'UP' : 'DOWN'}</span></b> and the other player chose <span class="p2">${opponent_cooperate ? 'LEFT' : 'RIGHT'}</span>, hence 
+                you <b><span class="p1">${payoff_text}</span></b>.<br>
+                Had you chosen to play differently (i.e, ${!cooperate ? 'UP' : 'DOWN'}) you would have <span class="forgone_text">${forgone_text}</span><br>
+                The other player ${opponent_payoff_text}.` : 
+
+                `<b>You received a penalty of ${penalty}, because you didn't take action in time</b>.<br>
+                The system automatically assigned you to play <b><span class="p1">${cooperate ? 'UP' : 'DOWN'}</span></b>.<br>
+                The other player chose <span class="p2">${opponent_cooperate ? 'LEFT' : 'RIGHT'}</span>.<br>
+                As a result, you <b><span class="p1">${payoff_text}</span></b> (after penalty deduction).<br>
+                If the system would have chosen differently, you would have <span class="forgone_text">${forgone_text}</span>.<br>
+                The other player ${opponent_payoff_text}.`}
+            </p>
+        `;
+        text_div.innerHTML = text;
+        text_div.classList.remove('notdisplay');
+    }
+
 
     function onLoad () {
         // in case player refreshed the page:

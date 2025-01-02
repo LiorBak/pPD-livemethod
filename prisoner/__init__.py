@@ -20,8 +20,9 @@ class C(BaseConstants):
     PAYOFF_CD_LOW = cu(-270)
     PAYOFF_CD_PROB_HIGH = 0.9
     IS_TEST = True
-    DESICION_TIMEOUT = 15
+    DESICION_TIMEOUT = 150
     PENALTY = cu(5)
+    RANDOM_MATCHING = True
     PAYOFF_MATRIX = {
         'PD': {
             (False, True): 30,
@@ -138,8 +139,6 @@ def set_payoff(player: Player):
     player.opponent_id_in_session = str(other.participant.id_in_session)
     player.opponent_cooperate = other.cooperate
     
-
-    
     # value_to_text = lambda v: 'got '+ str(v) if v == 0 else ('gained '+ str(v) if v > 0 else 'lost ' + str(abs(v)))
     # value_to_text = lambda v: 'got '+ str(v)
     
@@ -149,28 +148,7 @@ def set_payoff(player: Player):
         opponent_payoff = player.opponent_payoff,
         penalty = player.penalty,
     )
-    return dict(
-        opponent=opponent,
-        opponent_decision = player.opponent_cooperate,
-        payoff_text = value_to_text(player.payoff),
-        forgone_text = str(player.forgone_payoff),
-        opponent_payoff = value_to_text(opponent.payoff),
-        opponent_penalty = opponent.penalty,
-    )
 
-def waiting_too_long(player: Player):
-    participant = player.participant
-    if player.round_number < 4:
-        return False  # because first 3 rounds have longer waiting time
-    
-    # Called from ResultsWaitPage every time the player gets there, with a fixed delay of some seconds
-    participant = player.participant
-    
-    # this function is being called from the subsession's group_by_arrival_time_method function. The last should be refreshed once ot twice a miniute, thus detecting over-wait.
-    
-    import time
-    # assumes you set wait_page_arrival in PARTICIPANT_FIELDS.
-    return time.time() - participant.wait_page_arrival > C.DESICION_TIMEOUT * 2 #seconds
 def values_for_new_round(player: Player):
     player.super_game_round_number = ((player.round_number-1) % C.ROUNDS_PER_SUPERGAME) + 1 # The calculations intends to get round 10 = super_game round 10 instead of 0.
     is_new_opponent = (player.super_game_round_number == 1)
@@ -339,7 +317,10 @@ class Decision(Page):
     @staticmethod
     def js_vars(player: Player):
         return dict(subsequent_timeoutes=player.subsequent_timeoutes,
-                    is_dropout=player.is_dropout)
+                    is_dropout=player.is_dropout,
+                    desicion_time = C.DESICION_TIMEOUT,
+                    results_time = C.DESICION_TIMEOUT,
+                    )
     
     
     @staticmethod
@@ -385,7 +366,7 @@ class Decision(Page):
             player.game_type = player.session.config['game_type']
         values_for_new_round(player)
         set_desicion_time(player)
-        is_new_opponent = (player.super_game_round_number == 1)
+        is_new_opponent = True if C.RANDOM_MATCHING else (player.super_game_round_number == 1)
         
         # ---- set history for historical scores table -------
         history = []
@@ -459,10 +440,12 @@ class Decision(Page):
         # << end copy to introduction >>
         # ------------------
         return dict(
-            is_new_opponent = is_new_opponent,
+            is_new_supergame = (is_new_opponent and not C.RANDOM_MATCHING),
             history = history,
             t_left = text_left,
             t_right = text_right,
+            is_random_matching = C.RANDOM_MATCHING,
+            is_played = (player.field_maybe_none('cooperate') != None),
         )
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
