@@ -370,8 +370,10 @@ class Decision(Page):
         
         # ---- set history for historical scores table -------
         history = []
-        super_game_start = player.round_number + 1 - player.super_game_round_number
-        for round_number in range(super_game_start, player.round_number):
+        history_first_game = player.round_number + 1 - player.super_game_round_number
+        if C.RANDOM_MATCHING:
+            history_first_game = 1
+        for round_number in range(player.round_number - 1, history_first_game - 1, -1):
             past_player = player.in_round(round_number)
             history.append(past_player)
         
@@ -437,7 +439,18 @@ class Decision(Page):
                     text_left[f"{ti}{tj}"] = f'{payoff_matrix[(i,j)]}'
                     text_right[f"{ti}{tj}"] = f'{payoff_matrix[(j,i)]}'
         
+        text_left['CC'] = 'Up'
+        text_left['CD'] = 'Up'
+        text_left['DC'] = 'Down'
+        text_left['DD'] = 'Down'
+
+        text_right['CC'] = 'Left'
+        text_right['CD'] = 'Right'
+        text_right['DC'] = 'Left'
+        text_right['DD'] = 'Right'
+
         # << end copy to introduction >>
+
         # ------------------
         return dict(
             is_new_supergame = (is_new_opponent and not C.RANDOM_MATCHING),

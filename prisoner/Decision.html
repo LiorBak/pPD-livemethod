@@ -188,7 +188,7 @@
 
             {{ for past_player in history }}
                 <tr>
-                    <td>{{ past_player.super_game_round_number}}</td>
+                    <td>{{if is_random_matching}}{{past_player.round_number}}{{else}}{{ past_player.super_game_round_number}}{{endif}}</td>
                     <td>{{ if past_player.cooperate }}UP{{ else }}DOWN{{ endif }}</td>
                     <td>{{ past_player.payoff }}{{ if past_player.penalty > 0}} <i>(inc. penalty)</i>{{ endif }}</td> 
                     <td style="text-decoration: line-through;">{{ past_player.forgone_payoff}}{{ if past_player.penalty > 0}} <i>(inc. penalty)</i>{{ endif }}</td> 
@@ -221,7 +221,7 @@
     
     // Start the timer on page load
     startTimer();
-    // ensures the random action is invoked after page is loaded so that livesend will work
+    // ensures the random action is invoked after page is loaded so that (orelse livesend won't work)
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
         dropout_handler()
     } else {
@@ -229,7 +229,6 @@
     }
     
     function dropout_handler(player_is_back=false) {
-        console.log('dropout_handler', player_is_back)
         const AFK_overlay_div = document.getElementById('AFKoverlay')
         if (player_is_back){
             js_vars.is_dropout = false;
@@ -426,7 +425,6 @@
         text_div.classList.remove('notdisplay');
     }
 
-
     function onLoad () {
         // in case player refreshed the page:
         //if player.cooperate != null, then he already made some desicion - thus disable buttons, if he already has a payoff for that round call 'display results'
@@ -435,12 +433,12 @@
 
     // automatically called each time a message is received from the server.
     function liveRecv(data) {
-        // data is a dict I send from the init_ file
+        // data is a dict I send from the init_ file to spesific player using player.id_in_group
         // data should be {'cooperate': boolean value, 'sender_id_in_group': player.id_in_group, 'opponent_cooperate': opponent_cooperate, }
         // todo: 
         //       -. finish writing 'display results' function
         //       -. update timer
-        //       4. reduce times to 10 second action action/results. + 2 timeouts = drop out player (give him botton to say 'im back' bu until then he is replaced with random choice. dropout players Results page time should be set to 1 sec)
+        //       -. reduce times to 10 second action action/results. + 2 timeouts = drop out player (give him botton to say 'im back' bu until then he is replaced with random choice. dropout players Results page time should be set to 1 sec)
         //       5. handle when page gets refreshed - on load - check if action was already made, and if there are already results to display
         
         if (data.opponent_cooperate == null ) {
