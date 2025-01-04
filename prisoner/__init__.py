@@ -7,7 +7,7 @@ doc = '\nThis is a one-shot "Prisoner\'s Dilemma". Two players are asked separat
 class C(BaseConstants):
     NAME_IN_URL = 'prisoner'
     PLAYERS_PER_GROUP = 2
-    NUM_ROUNDS = 50
+    NUM_ROUNDS = 100
     ROUNDS_PER_SUPERGAME = 10
     PAYOFF_DC = cu(30)
     PAYOFF_CC = cu(20)
@@ -20,7 +20,7 @@ class C(BaseConstants):
     PAYOFF_CD_LOW = cu(-270)
     PAYOFF_CD_PROB_HIGH = 0.9
     PENALTY = cu(5)
-    IS_TEST = True
+    IS_TEST = False
     DESICION_TIMEOUT = 150
     RANDOM_MATCHING = True
     NO_DESCRIPTION = True
@@ -45,8 +45,6 @@ class C(BaseConstants):
         }
     }
 
-    # SHOW_UP_FEE = 5
-    # BONUS_FEE = 5
     INSTRUCTIONS_TEMPLATE = 'prisoner/instructions.html'
 class Subsession(BaseSubsession):
     pass
@@ -61,8 +59,14 @@ def creating_session(subsession: Subsession):
     import math
     
     num_participants = subsession.session.num_participants
-    
-    if num_participants == 6:
+    group_matrices = []
+    if num_participants == 4:
+        group_matrices = [
+            [[1, 2], [3, 4]],
+            [[1, 3], [2, 4]],
+            [[1, 4], [2, 3]],
+        ]
+    elif num_participants == 6:
         group_matrices = [
             [[1, 2], [3, 4], [5, 6]],
             [[1, 3], [2, 5], [4, 6]],
@@ -70,13 +74,30 @@ def creating_session(subsession: Subsession):
             [[1, 5], [2, 4], [3, 6]],
             [[1, 6], [2, 3], [4, 5]],
         ]
-        
+    elif num_participants == 8:
+        group_matrices = [
+            [[1, 2], [3, 4], [5, 6], [7, 8]],
+            [[1, 3], [2, 5], [4, 7], [6, 8]],
+            [[1, 4], [2, 6], [3, 8], [5, 7]],
+            [[1, 5], [2, 7], [3, 6], [4, 8]],
+            [[1, 6], [2, 8], [3, 7], [4, 5]],
+            [[1, 7], [2, 4], [3, 5], [6, 8]],
+            [[1, 8], [2, 3], [4, 6], [5, 7]],
+        ]
+    
+    if len(group_matrices) > 0:
         if subsession.round_number == 1:
-            print( subsession.get_players()[0].session.config['game_type'], 'session started.', C.NUM_ROUNDS, 'rounds')
-            for i in range(1, C.NUM_ROUNDS + 1):
-                super_game_number = math.floor((i-1) / C.ROUNDS_PER_SUPERGAME)
-                subsession.in_round(i).set_group_matrix(group_matrices[super_game_number])
-                # print('SP#',super_game_number, i, ":", group_matrices[super_game_number])
+            print( subsession.get_players()[0].session.config['game_type'], 'session started.', C.NUM_ROUNDS, 'rounds.', 'random matching' if C.RANDOM_MATCHING else ('fixed matching for', C.ROUNDS_PER_SUPERGAME, 'rounds per sp'))
+            if C.RANDOM_MATCHING:
+                for i in range(1, C.NUM_ROUNDS + 1):
+                    super_game_number = (i-1)%len(group_matrices)
+                    subsession.in_round(i).set_group_matrix(group_matrices[super_game_number])
+
+            else:
+                for i in range(1, C.NUM_ROUNDS + 1):
+                    super_game_number = math.floor((i-1) / C.ROUNDS_PER_SUPERGAME)%len(group_matrices)
+                    subsession.in_round(i).set_group_matrix(group_matrices[super_game_number])
+                    # print('SP#',super_game_number, i, ":", group_matrices[super_game_number])
     
 class Group(BaseGroup):
     pass
@@ -339,6 +360,8 @@ class Decision(Page):
                     is_dropout=player.is_dropout,
                     desicion_time = C.DESICION_TIMEOUT,
                     results_time = C.DESICION_TIMEOUT,
+                    already_made_desicion = (player.field_maybe_none('cooperate') != None),
+                    cooperate = player.field_maybe_none('cooperate'),
                     )
     
     

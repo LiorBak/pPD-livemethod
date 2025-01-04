@@ -121,8 +121,12 @@
 <!-- General Game Info -->
 <div style='display: flex; justify-content: space-between; font-size: 1.25em; padding: 0px 20px 0px 20px;'>
     <span>
-    <b>Round {{player.super_game_round_number}} of {{C.ROUNDS_PER_SUPERGAME}}</b>
-    Now playing with <b>Player #{{player.opponent_number}}</b>
+    {{ if is_random_matching }}
+        <b>Round {{player.super_game_round_number}} of {{C.NUM_ROUNDS}}</b>
+    {{else}}
+        <b>Round {{player.super_game_round_number}} of {{C.ROUNDS_PER_SUPERGAME}}</b>
+        Now playing with <b>Player #{{player.opponent_number}}</b>
+    {{endif}}
     </span>
 </div>
 
@@ -217,15 +221,22 @@
     let results_time = js_vars.results_time;
     let timerInterval;
     const nextButton = document.querySelector('.otree-btn-next');
-    forminputs.subsequent_timeoutes.value = js_vars.subsequent_timeoutes
-    
-    // Start the timer on page load
-    startTimer();
-    // ensures the random action is invoked after page is loaded so that (orelse livesend won't work)
+    // ensures the random action is invoked after page is loaded so that (orelse livesend won't work), also, that the AFK div was loaded
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
-        dropout_handler()
+        onLoad()
     } else {
-        document.addEventListener('DOMContentLoaded', function () {dropout_handler()})         
+        document.addEventListener('DOMContentLoaded', function () {onLoad()})         
+    }
+    
+    function onLoad() {
+        if (js_vars.already_made_desicion) {
+            // in case player refreshed the page after he already sent desicion to the server
+            simulate_action_click(js_vars.cooperate)
+        }
+        forminputs.subsequent_timeoutes.value = js_vars.subsequent_timeoutes
+            // Start the timer on page load
+        startTimer();
+        dropout_handler();
     }
     
     function dropout_handler(player_is_back=false) {
@@ -236,9 +247,9 @@
             forminputs.is_dropout.value = false;
             AFK_overlay_div.style.display = 'none';
         } else {
+            if (js_vars.is_dropout) {AFK_overlay_div.style.display='block';}
             setTimeout(() => {
                 if (js_vars.is_dropout) {
-                    AFK_overlay_div.style.display='block';
                     play_random_action();
                 }
             } , 500) //0.5sec to let player press his back
@@ -284,10 +295,9 @@
         clearInterval(timerInterval);
         timerElement.style.display = 'none';
     }
-    function play_random_action(){
-        let rnd_cooperate = Math.random() < 0.5
-        function random_click(rnd_cooperate){
-            if (rnd_cooperate) {
+    function simulate_action_click(cooperate){
+        function simulate_click(cooperate){
+            if (cooperate) {
                 action_clicked(document.getElementById('cooperateBtn'), false)
             } else {
                 action_clicked(document.getElementById('defectBtn'), false)
@@ -295,10 +305,14 @@
         }
         // ensures the random action is invoked after page is loaded so that livesend will work
         if (document.readyState === 'complete' || document.readyState === 'interactive') {
-            random_click(rnd_cooperate)
+            simulate_click(cooperate)
         } else {
-            document.addEventListener('DOMContentLoaded', function () {random_click(rnd_cooperate)})         
+            document.addEventListener('DOMContentLoaded', function () {simulate_click(cooperate)})         
         }
+    }
+    function play_random_action(){
+        let rnd_cooperate = Math.random() < 0.5
+        simulate_action_click(rnd_cooperate)
     }
 
     function action_clicked(button, user_click=true) { //called when btn clicked
@@ -423,12 +437,6 @@
         `;
         text_div.innerHTML = text;
         text_div.classList.remove('notdisplay');
-    }
-
-    function onLoad () {
-        // in case player refreshed the page:
-        //if player.cooperate != null, then he already made some desicion - thus disable buttons, if he already has a payoff for that round call 'display results'
-        return
     }
 
     // automatically called each time a message is received from the server.
