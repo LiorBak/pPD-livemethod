@@ -508,23 +508,17 @@ class Decision(Page):
         set_desicion_time(player) # second run as the page ends
 
 class ResultsWaitPage(WaitPage):
-    # after_all_players_arrive = set_payoffs
+    after_all_players_arrive = set_payoffs
     @staticmethod
     def is_displayed(player: Player):
-        # In case his opponent dropped:
-        # you should be able to open the respective participant’s URL and click on the “Next” button.
-        # Or just forward him with 'other_participant.is_dropout = True' then it will skip waitpages
-        other_participant = other_player(player).participant
-        
-        if other_participant.is_dropout:
-            return False
-        else:
-            return True
+        # just fot bots to prevent them from submitting pages ahead of time
+        return player.session.config['use_browser_bots']
+
 
 class EndOfSuperGame(Page):
     @staticmethod
     def is_displayed(player: Player):
-        return False  # player.super_game_round_number == C.ROUNDS_PER_SUPERGAME
+        return (player.super_game_round_number == C.ROUNDS_PER_SUPERGAME) and not C.RANDOM_MATCHING
     @staticmethod
     def vars_for_template(player: Player):
         # ---- set history for historical scores table -------
@@ -563,4 +557,4 @@ class EndOfExperiment(Page):
         )
 class ReadMe(Page):
     pass
-page_sequence = [InformedConsentPage, Introduction, Decision, EndOfExperiment]
+page_sequence = [InformedConsentPage, Introduction, Decision, ResultsWaitPage, EndOfExperiment]
