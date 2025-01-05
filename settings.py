@@ -1,8 +1,8 @@
 from os import environ
-SESSION_CONFIG_DEFAULTS = dict(real_world_currency_per_point=1, 
+SESSION_CONFIG_DEFAULTS = dict(real_world_currency_per_point=0, 
                                participation_fee=4,
                                bonus_payment=4,
-                               turned_away_fee=3)
+                               turned_away_fee=3,)
 
 SESSION_CONFIGS = [
     dict(name='test',
@@ -10,12 +10,16 @@ SESSION_CONFIGS = [
          app_sequence=['prisoner', 'survey'],
          use_browser_bots=False,
          game_type="pPD",
+         random_matching=True,
+         is_description=False,
          ),
     dict(name='experiment_main',
          num_demo_participants=6,
          app_sequence=['prisoner', 'survey'],
          use_browser_bots=False,
          game_type="pPD",
+         random_matching=True,
+         is_description=False,
          ),
     dict(
         name='forwrd_link',
