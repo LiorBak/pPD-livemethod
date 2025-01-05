@@ -37,12 +37,30 @@ class C(BaseConstants):
             (False, False): 10,
             (True, False): 30,
             },
-        'pPD': {  # behavioralPD_evPD
+        'EV-PD beh-PD': {  # behavioralPD_evPD
             (False, True): [25, .9, 75],
             (True, True): [17, .5, 23],
-            (False, False): 10,
+            (False, False): [8, .5, 12],
             (True, False): [5, .9, -45],            
-        }
+        },
+        'EV-PD beh-CG': {  # behavioralCG_evPD
+            (False, True): [0, .9, 300],
+            (True, True): [17, .5, 23],
+            (False, False): [8, .5, 12],
+            (True, False): [30, .9, -270],            
+        },
+        'EV-CG beh-CG': {  # behavioralCG_evCG
+            (False, True): [5, .9, -45],
+            (True, True): [17, .5, 23],
+            (False, False): [8, .5, 12],
+            (True, False): [25, .9, 75],            
+        },
+        'EV-CG beh-PD': {  # behavioralCG_evCG
+            (False, True): [30, .9, -270],
+            (True, True): [17, .5, 23],
+            (False, False): [8, .5, 12],
+            (True, False): [0, .9, 300],            
+        },
     }
 
     INSTRUCTIONS_TEMPLATE = 'prisoner/instructions.html'
@@ -238,7 +256,7 @@ def calc_total_payoff(player: Player):
 
     # populate payoff values to participant level
     player.participant.vars['payoff'] = float(bonus)
-    player.participant.vars['bonus'] = float(bonus)  # this will be used later to overwrite payoff
+    player.participant.vars['bonus'] = float(bonus)  # this will be used later to overwrite payoff in the survey app
     player.participant.vars['total_score'] = float(player.total_score)
     player.participant.vars['chance_to_win'] = chance_to_win*100
     player.participant.vars['random_lottery_number'] = random_number*100
@@ -268,86 +286,42 @@ class Introduction(Page):
         player.experiment_start_time = time.time()
         player.game_type = player.session.config['game_type']
         
+        
+        payoff_matrix = C.PAYOFF_MATRIX[player.game_type]
+        add_got_text = lambda v: 'get '+ str(v) if v == 0 else ('gain '+ str(v) if v > 0 else 'lose ' + str(abs(v))) + ' points'
         # << copied from Desicion >>
-        
-        payoff_matrix = {}        
-        
-        if player.game_type == "PD":
-            payoff_matrix = {
-                    (False, True): C.PAYOFF_DC,
-                    (True, True): C.PAYOFF_CC,
-                    (False, False): C.PAYOFF_DD,
-                    (True, False): C.PAYOFF_CD,
-            }
-        
-        if player.game_type == "CG":
-            payoff_matrix = {
-                    (False, True): C.PAYOFF_CD,
-                    (True, True): C.PAYOFF_CC,
-                    (False, False): C.PAYOFF_DD,
-                    (True, False): C.PAYOFF_DC,
-            }    
-        
-        if player.game_type == "pPD":
-            payoff_matrix = {
-                    (False, True): [C.PAYOFF_DC_LOW, C.PAYOFF_DC_HIGH],
-                    (True, True): C.PAYOFF_CC,
-                    (False, False): C.PAYOFF_DD,
-                    (True, False): [C.PAYOFF_CD_HIGH, C.PAYOFF_CD_LOW],
-            }
-        
-        if player.game_type == "pCG":
-            payoff_matrix = {
-                    (True, False): [C.PAYOFF_DC_LOW, C.PAYOFF_DC_HIGH],
-                    (True, True): C.PAYOFF_CC,
-                    (False, False): C.PAYOFF_DD,
-                    (False, True): [C.PAYOFF_CD_HIGH, C.PAYOFF_CD_LOW],
-            }
+        add_points_text = lambda v: str(v) + ' points'
+        def payoff_matrix_to_text(payoff_val): # Returns the payoffs text for the table
+            if type(payoff_val) == list: 
+                return f'{add_points_text(payoff_val[0])} with <nobr>{round(payoff_val[1]*100)}% chance,</nobr> and <nobr>{add_points_text(payoff_val[2])} with {round((1-payoff_val[1])*100)}% chance</nobr>'
+            else:
+                return add_points_text(payoff_val)
+        # << end of copied from Desicion >>
+
+        def payoff_matrix_to_description(payoff_val): # Returns the payoff text for the description
+            if type(payoff_val) == list:  
+                return f'{add_got_text(payoff_val[0])} with <nobr>probability {round(payoff_val[1],1)} ({round(payoff_val[1]*100)}% chance),</nobr> and <nobr>{add_got_text(payoff_val[2])} otherwise ({round((1-payoff_val[1])*100)}% chance)</nobr>'
+            else:
+                return add_got_text(payoff_val)
         
         # ---- set text for desicion table according to game type----
-        
         text_left = {}
         text_right = {}
         text_desc_player = {}
         text_desc_other = {}
-        value_to_text = lambda v: 'get '+ str(v) if v == 0 else ('gain '+ str(v) if v > 0 else 'lose ' + str(abs(v)))
-        
-        if player.game_type[0] == 'p': # game is probablistic version
-            for i in [0, 1]:
-                for j in [0,1]:
-                    ti = 'C' if i == 1 else 'D'
-                    tj = 'C' if j == 1 else 'D'
-                    if i != j: #and type(payoff_matrix) == list
-                        text_left[f"{ti}{tj}"] = f'{payoff_matrix[(i,j)][0]} with <nobr>90% chance,</nobr> and <nobr>{payoff_matrix[(i,j)][1]} with 10% chance</nobr>'  #player
-                        text_right[f"{ti}{tj}"] = f'{payoff_matrix[(j,i)][0]} with <nobr>90% chance</nobr>, and <nobr>{payoff_matrix[(j,i)][1]} with 10% chance</nobr>'  #opponent
-        
-                        # _______<< only for introduction >>__________
-                        text_desc_player[f"{ti}{tj}"] = f'{value_to_text(payoff_matrix[(i,j)][0])} with <nobr>probability 0.9 (90% chance),</nobr> and <nobr>{value_to_text(payoff_matrix[(i,j)][1])} otherwise (10% chance)</nobr>'  #player
-                        text_desc_other[f"{ti}{tj}"] = f'{value_to_text(payoff_matrix[(j,i)][0])} with <nobr>probability 0.9 (90% chance),</nobr> and <nobr>{value_to_text(payoff_matrix[(j,i)][1])} otherwise (10% chance)</nobr>'  #opponent
-                        # _______<< end of 'only for introduction' >>______
-                    else:
-                        text_left[f"{ti}{tj}"] = f'{payoff_matrix[(i,j)]}'  #player
-                        text_right[f"{ti}{tj}"] = f'{payoff_matrix[(j,i)]}' #opponent
-                        
-                        # _______<< only for introduction >>__________
-                        text_desc_player[f"{ti}{tj}"] = f'{value_to_text(payoff_matrix[(i,j)])} '  #player
-                        text_desc_other[f"{ti}{tj}"] = f'{value_to_text(payoff_matrix[(j,i)])} '  #opponent
-                        # _______<< end of 'only for introduction' >>______
-        
-        
-        else:  # game is Deterministic version
-            for i in [0, 1]:
-                for j in [0,1]:
-                    ti = 'C' if i == 1 else 'D'
-                    tj = 'C' if j == 1 else 'D'
-                    text_left[f"{ti}{tj}"] = f'{payoff_matrix[(i,j)]}'
-                    text_right[f"{ti}{tj}"] = f'{payoff_matrix[(j,i)]}'
 
+        for i in [0, 1]:
+            for j in [0,1]:
+                ti = 'C' if i == 1 else 'D'
+                tj = 'C' if j == 1 else 'D'
+                
+                text_left[f"{ti}{tj}"] = payoff_matrix_to_text(payoff_matrix[(i,j)]) #player
+                text_right[f"{ti}{tj}"] = payoff_matrix_to_text(payoff_matrix[(j,i)]) #opponent
 
-                    # _______<< only for introduction >>__________
-                    text_desc_player[f"{ti}{tj}"] = f'{value_to_text(payoff_matrix[(i,j)])} '  #player
-                    text_desc_other[f"{ti}{tj}"] = f'{value_to_text(payoff_matrix[(j,i)])} '  #opponent
-                    # _______<< end of 'only for introduction' >>______
+                # _______<< only for introduction >>__________
+                text_desc_player[f"{ti}{tj}"] = payoff_matrix_to_description(payoff_matrix[(i,j)])  #player
+                text_desc_other[f"{ti}{tj}"] = payoff_matrix_to_description(payoff_matrix[(j,i)])  #opponent
+                # _______<< end of 'only for introduction' >>______        
         
         if not player.session.config['is_description']:
             text_left['CC'] = 'Up'
@@ -449,67 +423,25 @@ class Decision(Page):
             past_player = player.in_round(round_number)
             history.append(past_player)
         
-        # << start copy to introduction >>
         # ---- Define payoff_matrix -------
-        
-        payoff_matrix = {}        
-        
-        if player.game_type == "PD":
-            payoff_matrix = {
-                    (False, True): C.PAYOFF_DC,
-                    (True, True): C.PAYOFF_CC,
-                    (False, False): C.PAYOFF_DD,
-                    (True, False): C.PAYOFF_CD,
-            }
-        
-        if player.game_type == "CG":
-            payoff_matrix = {
-                    (False, True): C.PAYOFF_CD,
-                    (True, True): C.PAYOFF_CC,
-                    (False, False): C.PAYOFF_DD,
-                    (True, False): C.PAYOFF_DC,
-            }    
-        
-        if player.game_type == "pPD":
-            payoff_matrix = {
-                    (False, True): [C.PAYOFF_DC_LOW, C.PAYOFF_DC_HIGH],
-                    (True, True): C.PAYOFF_CC,
-                    (False, False): C.PAYOFF_DD,
-                    (True, False): [C.PAYOFF_CD_HIGH, C.PAYOFF_CD_LOW],
-            }
-        
-        if player.game_type == "pCG":
-            payoff_matrix = {
-                    (True, False): [C.PAYOFF_DC_LOW, C.PAYOFF_DC_HIGH],
-                    (True, True): C.PAYOFF_CC,
-                    (False, False): C.PAYOFF_DD,
-                    (False, True): [C.PAYOFF_CD_HIGH, C.PAYOFF_CD_LOW],
-            }
+        payoff_matrix = C.PAYOFF_MATRIX[player.game_type]
+        add_points_text = lambda v: str(v) + ' points'
+        def payoff_matrix_to_text(payoff_val):
+            if type(payoff_val) == list:  # Returns the payoff description for the table
+                return f'{add_points_text(payoff_val[0])} with <nobr>{round(payoff_val[1]*100)}% chance,</nobr> and <nobr>{add_points_text(payoff_val[2])} with {round((1-payoff_val[1])*100)}% chance</nobr>'
+            else:
+                return add_points_text(payoff_val)
         
         # ---- set text for desicion table according to game type----
-        
         text_left = {}
         text_right = {}
 
-        if player.game_type[0] == 'p': # game is probablistic version
-            for i in [0, 1]:
-                for j in [0,1]:
-                    ti = 'C' if i == 1 else 'D'
-                    tj = 'C' if j == 1 else 'D'
-                    if i != j: #and type(payoff_matrix) == list
-                        text_left[f"{ti}{tj}"] = f'{payoff_matrix[(i,j)][0]} with <nobr> 90% chance,</nobr><br>and <nobr>{payoff_matrix[(i,j)][1]}</nobr> with <nobr>10% chance<nobr>'  #player
-                        text_right[f"{ti}{tj}"] = f'{payoff_matrix[(j,i)][0]} with </nobr>90% chance</nobr>,<br>and <nobr>{payoff_matrix[(j,i)][1]}</nobr> with <nobr>10% chance<nobr>'  #opponent
-                    else:
-                        text_left[f"{ti}{tj}"] = f'{payoff_matrix[(i,j)]}'  #player
-                        text_right[f"{ti}{tj}"] = f'{payoff_matrix[(j,i)]}' #opponent
-        
-        else:  # game is Deterministic version
-            for i in [0, 1]:
-                for j in [0,1]:
-                    ti = 'C' if i == 1 else 'D'
-                    tj = 'C' if j == 1 else 'D'
-                    text_left[f"{ti}{tj}"] = f'{payoff_matrix[(i,j)]}'
-                    text_right[f"{ti}{tj}"] = f'{payoff_matrix[(j,i)]}'
+        for i in [0, 1]:
+            for j in [0,1]:
+                ti = 'C' if i == 1 else 'D'
+                tj = 'C' if j == 1 else 'D'
+                text_left[f"{ti}{tj}"] = payoff_matrix_to_text(payoff_matrix[(i,j)])  #player
+                text_right[f"{ti}{tj}"] = payoff_matrix_to_text(payoff_matrix[(j,i)])  #opponent
         
         if not player.session.config['is_description']:
             text_left['CC'] = 'Up'
@@ -521,8 +453,6 @@ class Decision(Page):
             text_right['CD'] = 'Right'
             text_right['DC'] = 'Left'
             text_right['DD'] = 'Right'
-
-        # << end copy to introduction >>
 
         # ------------------
         return dict(
@@ -543,7 +473,6 @@ class ResultsWaitPage(WaitPage):
     def is_displayed(player: Player):
         # just fot bots to prevent them from submitting pages ahead of time
         return player.session.config['use_browser_bots']
-
 
 class EndOfSuperGame(Page):
     @staticmethod
