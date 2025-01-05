@@ -69,6 +69,7 @@ ROOMS = [
 ADMIN_USERNAME = 'admin'
 # for security, best to set admin password in an environment variable
 ADMIN_PASSWORD = 'ppd'  # environ.get('OTREE_ADMIN_PASSWORD')
+DEBUG = environ.get('DEBUG', 'False').lower() == 'true'
 
 SECRET_KEY = 'blahblah'
 
