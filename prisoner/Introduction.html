@@ -11,18 +11,14 @@
     .otree-title {font-size: 2em;}
     h2 {font-size: 1.5em;}
 </style>
-<!-- 
-.row {display: flex;}
-    .col {flex: 50%;}
--->
 
 {{ if is_random_matching}}
     <p>
-        In this study, you will play the same game {{number_of_rounds}} times. In each game, you will be randomly and anonymously paired with another participant in this experiment. You will not be paired with the same participant in two consecutive rounds.
+        In this study, you will play the same game {{C.NUM_ROUNDS}} times. In each game, you will be randomly and anonymously paired with another participant in this experiment. You will not be paired with the same participant in two consecutive rounds.
     </p>
 {{ else }}
     <p>
-        In this study, you will play five games. Each game consists of 10 rounds. In each game, you will be randomly and anonymously paired with another participant in this experiment. You will remain paired with the same participant for all 10 rounds of the game, and will then switch to play the next game with a different participant. You will not be paired with the same participant in more than one game.
+        In this study, you will play five games. Each game consists of {{C.ROUNDS_PER_SUPERGAME}} rounds. In each game, you will be randomly and anonymously paired with another participant in this experiment. You will remain paired with the same participant for all {{C.ROUNDS_PER_SUPERGAME}} rounds of the game, and will then switch to play the next game with a different participant. You will not be paired with the same participant in more than one game.
     </p> 
 {{ endif }}
 
@@ -80,8 +76,8 @@
 </h2>
 <p>
     To make a choice, you will need to press a button inside the table, either the ‘choose UP’ or ‘choose DOWN’ button.<br>
-    In each round, you will have a limited time to make your choice. For the first three rounds of each game, you will have 30 seconds to decide. After the 3rd round, you will have 15 seconds to make your choice.<br>
-If you don't make a choice in time, the computer will choose one for you at random, and 5 points will be deducted from your payoff for that round.
+    In each round there is a time limit, you will have {{C.DECISION_TIMEOUT}} seconds to make your choice.<br>
+    If you don't make a choice in time, the computer will choose one for you at random, and {{C.PENALTY}} will be deducted from your payoff for that round.
 </p>
 <p>
     Note that you will only be able to proceed to the next round after the other player has made their choice and also proceeds to the next round.<br>
@@ -95,11 +91,11 @@ After both you and the other player make your choices, you will see your payoff 
 </h2>
 {{ if is_random_matching }}
     <p>
-        Each round you will play with a <b>different player</b> who will be chosen at random. The game will be played for {{number_of_rounds}}.
+        Each round you will play with a <b>different player</b> who will be chosen at random. The game will be played for {{C.NUM_ROUNDS}}.
     </p>
 {{ else }}
     <p>
-        After 10 rounds are over, you will get a new partner to play the same game with. Overall, you will be matched with 5 different partners, playing 10 rounds with each (a total of 50 rounds of the game).
+        After {{C.ROUNDS_PER_SUPERGAME}} rounds are over, you will get a new partner to play the same game with. Overall, you will be matched with {{num_opponents}} different partners, playing {{C.ROUNDS_PER_SUPERGAME}} rounds with each (a total of {{C.NUM_ROUNDS}} rounds of the game).
     </p>
 {{ endif }}
 <!-- payment info -->
@@ -111,8 +107,10 @@ After both you and the other player make your choices, you will see your payoff 
 </p>
 <div>
     The show-up fee is {{show_up_fee}} GBP.<br>
-The bonus payment will be an <b>additional {{bonus_fee}} GBP</b>. Your chances to earn this bonus depends on the number of points you accumulate throughout the games. <b>The more points you accumulate, the higher your chances of getting the bonus</b>.<br>Specifically, we will add 1200 points to the total number of points you accumulate and then divide the sum by 4,000. The result will represent your chance (in percentages) to win the bonus.<br>For example, if you accumulate 800 points, you will have a (1200+800)/4000 =  50% chance to win the bonus.<br>This process means that to increase your chances of getting the bonus, you should <b>try to accumulate as many points as possible.</b>
-
+    The bonus payment will be an <b>additional {{bonus_fee}} GBP</b>. Your chances to earn this bonus depends on the number of points you accumulate throughout the games. <b>The more points you accumulate, the higher your chances of getting the bonus</b>.<br>
+    Specifically, we will add {{C.RANDOM_BONUS_LOWER_BOUND}} points to the total number of points you accumulate and then divide the sum by {{C.RANDOM_BONUS_UPPER_BOUND}}. The result will represent your chance (in percentages) to win the bonus.<br>
+    For example, if you accumulate {{bonus_example_points}} points, you will have a ({{C.RANDOM_BONUS_LOWER_BOUND}}+{{bonus_example_points}})/{{C.RANDOM_BONUS_UPPER_BOUND}} =  {{bonus_example_chance}}% chance to win the bonus.<br>
+    This process means that to increase your chances of getting the bonus, you should <b>try to accumulate as many points as possible.</b>
 </div>
 
 

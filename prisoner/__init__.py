@@ -21,9 +21,9 @@ class C(BaseConstants):
     PAYOFF_CD_PROB_HIGH = 0.9
     PENALTY = cu(5)
     IS_TEST = False
-    DESICION_TIMEOUT = 150
-    RANDOM_MATCHING = True
-    NO_DESCRIPTION = True
+    DECISION_TIMEOUT = 10
+    RANDOM_BONUS_LOWER_BOUND = 1350
+    RANDOM_BONUS_UPPER_BOUND = 5700
     PAYOFF_MATRIX = {
         'PD': {
             (False, True): 30,
@@ -87,8 +87,9 @@ def creating_session(subsession: Subsession):
     
     if len(group_matrices) > 0:
         if subsession.round_number == 1:
-            print( subsession.get_players()[0].session.config['game_type'], 'session started.', C.NUM_ROUNDS, 'rounds.', 'random matching' if C.RANDOM_MATCHING else ('fixed matching for', C.ROUNDS_PER_SUPERGAME, 'rounds per sp'))
-            if C.RANDOM_MATCHING:
+            player = subsession.get_players()[0]
+            print( player.session.config['game_type'], 'session started.', C.NUM_ROUNDS, 'rounds.', 'random matching' if player.session.config['random_matching'] else ('fixed matching for', C.ROUNDS_PER_SUPERGAME, 'rounds per sp'))
+            if player.session.config['random_matching']:
                 for i in range(1, C.NUM_ROUNDS + 1):
                     super_game_number = (i-1)%len(group_matrices)
                     subsession.in_round(i).set_group_matrix(group_matrices[super_game_number])
@@ -123,9 +124,12 @@ class Player(BasePlayer):
     total_experiment_payoffGDP = models.FloatField()
     subsequent_timeoutes = models.IntegerField(initial=0)
     decision_time = models.FloatField()
-    results_time = models.FloatField()
+    wait_for_other_time = models.FloatField()
+    results_time = models.FloatField(initial=0)  #initial=0 is set for bots
     experiment_start_time = models.FloatField()
     experiment_end_time = models.FloatField()
+    is_random_matching = models.BooleanField()
+    is_description = models.BooleanField()
     is_pass = models.IntegerField(label='   ')
     is_dropout = models.BooleanField(initial=False)
 def other_player(player: Player):
@@ -161,9 +165,6 @@ def set_payoff(player: Player):
     player.opponent_id_in_session = str(other.participant.id_in_session)
     player.opponent_cooperate = other.cooperate
     
-    # value_to_text = lambda v: 'got '+ str(v) if v == 0 else ('gained '+ str(v) if v > 0 else 'lost ' + str(abs(v)))
-    # value_to_text = lambda v: 'got '+ str(v)
-    
     return dict(
         payoff=player.payoff,
         forgone=player.forgone_payoff,
@@ -175,11 +176,14 @@ def values_for_new_round(player: Player):
     player.super_game_round_number = ((player.round_number-1) % C.ROUNDS_PER_SUPERGAME) + 1 # The calculations intends to get round 10 = super_game round 10 instead of 0.
     is_new_opponent = (player.super_game_round_number == 1)
     
-    print('drop', player.is_dropout, player.subsequent_timeoutes)
+    player.is_random_matching = player.session.config['random_matching']
+    player.is_description = player.session.config['is_description']
     
     if player.round_number > 1:
         #set repeeting values
         player.game_type = player.in_round(1).game_type
+        player.is_random_matching = player.in_round(1).is_random_matching
+        player.is_description = player.in_round(1).is_description
         player.opponent_number = player.in_round(player.round_number - 1).opponent_number
         player.total_score = player.in_round(player.round_number - 1).total_score
         player.subsequent_timeoutes = player.in_round(player.round_number - 1).subsequent_timeoutes
@@ -191,19 +195,38 @@ def values_for_new_round(player: Player):
             player.opponent_number = player.in_round(player.round_number - 1).opponent_number
     
     
-def set_desicion_time(player: Player):
-    # This funtion is called at page Desicion two times: 
-    # a) at vars_for_template - when page loads, b) at before_bext_page - when page ends
+def set_desicion_time(player: Player, called_from):
+    # This funtion is called at page Desicion four times: 
+    # a) at vars for template - when page loads, b) when desicion is sent to the server c) when payoffs are calculated d) at before_bext_page - when page ends
     import time
-    
     now = time.time()
     
-    if player.field_maybe_none('decision_time') == None:
+    if called_from=='decision vars_for_template':
         player.decision_time = now
-    else:
+    elif called_from=='live_method function - wait for other':
+        player.wait_for_other_time = now
         player.decision_time = now - player.decision_time
+    elif called_from=='live_method function - set payoffs':
+        player.results_time = now
+        if player.field_maybe_none('wait_for_other_time') == None:  # the other player made desicion first
+            player.wait_for_other_time = 0
+            player.decision_time = now - player.decision_time
+        else:  #we already called this fucntion once from set payoffs
+            player.wait_for_other_time = now - player.wait_for_other_time
+    elif called_from=='decision before_next_page':
+        player.results_time = now - player.results_time 
+
 def calc_total_payoff(player: Player):    
-    chance_to_win = (float(player.total_score) + 1200)/4000
+    chance_to_win = (float(player.total_score) + C.RANDOM_BONUS_LOWER_BOUND)/C.RANDOM_BONUS_UPPER_BOUND
+    '''
+    The lower and upper bounds of probability will be such that if a player plays only (C,D) [or  only (D,C)] for all 100 rounds, he will only have  a 5% (actually 4%) chance to hit the boundary. (Cumulative probability: P(x>15) when x is #getting -270 witn prob .1 in each)
+    So p(bonus) = [1350 + Sigma(v_i)] / 5700 
+    (We used binomial calculator for the 7.3%, which gets to 10 losses of 270, 15*(-270) + 90*30 = 1,350.
+    On the other hand, 300, 15 times, is 4,500. also with 4% prob.
+    Finally, we assume mean score per round to be 15. So for 100 rounds it is 1500. 1500+1350/4500=63%
+    Thus we increase the dominator to 5,700
+    To conclude, the range of points in the probability games are [0, 5700] (with prob. 4% to hit each end, note that since you can’t hit both ends at the same time, the probability of not hitting any end is bigger than 96%, and not 92%).
+    '''
     player.chance_to_win_bonus = chance_to_win
     random_number = random.uniform(0, 1)
     player.win_bonus = chance_to_win > random_number
@@ -326,7 +349,7 @@ class Introduction(Page):
                     text_desc_other[f"{ti}{tj}"] = f'{value_to_text(payoff_matrix[(j,i)])} '  #opponent
                     # _______<< end of 'only for introduction' >>______
         
-        if C.NO_DESCRIPTION:
+        if not player.session.config['is_description']:
             text_left['CC'] = 'Up'
             text_left['CD'] = 'Up'
             text_left['DC'] = 'Down'
@@ -338,16 +361,19 @@ class Introduction(Page):
             text_right['DD'] = 'Right'
         # << end of copy from Desicion >>
 
+        bonus_example_points = C.NUM_ROUNDS*15 #assuming 15 is the mean payoff per round
         return dict(
             t_left = text_left,
             t_right = text_right,
             desc_player = text_desc_player,
             desc_other = text_desc_other,
-            is_random_matching = C.RANDOM_MATCHING,
-            is_description = (not C.NO_DESCRIPTION),
-            number_of_rounds = C.NUM_ROUNDS,
+            is_random_matching = player.session.config['random_matching'],
+            is_description = player.session.config['is_description'],
             show_up_fee = int(player.session.config['participation_fee']),
             bonus_fee = player.session.config['bonus_payment'],
+            bonus_example_points = bonus_example_points,
+            bonus_example_chance = round(100*(bonus_example_points+C.RANDOM_BONUS_LOWER_BOUND)/C.RANDOM_BONUS_UPPER_BOUND),
+            num_opponents = C.NUM_ROUNDS/C.ROUNDS_PER_SUPERGAME,
         )
 class Decision(Page):
     form_model = 'player'
@@ -358,8 +384,8 @@ class Decision(Page):
     def js_vars(player: Player):
         return dict(subsequent_timeoutes=player.subsequent_timeoutes,
                     is_dropout=player.is_dropout,
-                    desicion_time = C.DESICION_TIMEOUT,
-                    results_time = C.DESICION_TIMEOUT,
+                    desicion_time = C.DECISION_TIMEOUT,
+                    results_time = C.DECISION_TIMEOUT,
                     already_made_desicion = (player.field_maybe_none('cooperate') != None),
                     cooperate = player.field_maybe_none('cooperate'),
                     )
@@ -376,7 +402,11 @@ class Decision(Page):
         player.penalty = C.PENALTY if data['timeout'] else 0
              
         if opponent_cooperate == None:
+            set_desicion_time(player, 'live_method function - wait for other')
             return
+        else: 
+            set_desicion_time(player, 'live_method function - set payoffs')
+            set_desicion_time(opponent, 'live_method function - set payoffs')
 
         payoffs_dict_me = None
         payoffs_dict_opponent = None
@@ -407,13 +437,13 @@ class Decision(Page):
         if C.IS_TEST:
             player.game_type = player.session.config['game_type']
         values_for_new_round(player)
-        set_desicion_time(player)
-        is_new_opponent = True if C.RANDOM_MATCHING else (player.super_game_round_number == 1)
+        set_desicion_time(player, 'decision vars_for_template')
+        is_new_opponent = True if player.session.config['random_matching'] else (player.super_game_round_number == 1)
         
         # ---- set history for historical scores table -------
         history = []
         history_first_game = player.round_number + 1 - player.super_game_round_number
-        if C.RANDOM_MATCHING:
+        if player.session.config['random_matching']:
             history_first_game = 1
         for round_number in range(player.round_number - 1, history_first_game - 1, -1):
             past_player = player.in_round(round_number)
@@ -481,7 +511,7 @@ class Decision(Page):
                     text_left[f"{ti}{tj}"] = f'{payoff_matrix[(i,j)]}'
                     text_right[f"{ti}{tj}"] = f'{payoff_matrix[(j,i)]}'
         
-        if C.NO_DESCRIPTION:
+        if not player.session.config['is_description']:
             text_left['CC'] = 'Up'
             text_left['CD'] = 'Up'
             text_left['DC'] = 'Down'
@@ -496,16 +526,16 @@ class Decision(Page):
 
         # ------------------
         return dict(
-            is_new_supergame = (is_new_opponent and not C.RANDOM_MATCHING),
+            is_new_supergame = (is_new_opponent and not player.session.config['random_matching']),
             history = history,
             t_left = text_left,
             t_right = text_right,
-            is_random_matching = C.RANDOM_MATCHING,
+            is_random_matching = player.session.config['random_matching'],
             is_played = (player.field_maybe_none('cooperate') != None),
         )
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
-        set_desicion_time(player) # second run as the page ends
+        set_desicion_time(player, 'decision before_next_page') # last run as the page ends
 
 class ResultsWaitPage(WaitPage):
     after_all_players_arrive = set_payoffs
@@ -518,7 +548,7 @@ class ResultsWaitPage(WaitPage):
 class EndOfSuperGame(Page):
     @staticmethod
     def is_displayed(player: Player):
-        return (player.super_game_round_number == C.ROUNDS_PER_SUPERGAME) and not C.RANDOM_MATCHING
+        return (player.super_game_round_number == C.ROUNDS_PER_SUPERGAME) and not player.session.config['random_matching']
     @staticmethod
     def vars_for_template(player: Player):
         # ---- set history for historical scores table -------
@@ -536,7 +566,7 @@ class EndOfSuperGame(Page):
         )
     @staticmethod
     def get_timeout_seconds(player: Player):
-        return (5/3)*C.DESICION_TIMEOUT
+        return (5/3)*C.DECISION_TIMEOUT
 class EndOfExperiment(Page):
     @staticmethod
     def is_displayed(player: Player):
@@ -545,7 +575,7 @@ class EndOfExperiment(Page):
     def vars_for_template(player: Player):
         import time
         player.experiment_end_time = time.time()
-        player.experiment_start_time = player.in_round(1).experiment_start_time
+        player.experiment_start_time = player.in_round(1).field_maybe_none('experiment_start_time')
         chance_to_win, random_number = calc_total_payoff(player)
         
         return dict(
