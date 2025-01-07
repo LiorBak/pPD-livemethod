@@ -19,6 +19,7 @@
     .col {transition: .5s;}
     .opacity {opacity: 0; transition: opacity 0.7s;}
     .notdisplay {display: none !important;}
+    #history_table_container {overflow-x: auto;}
 
     #waiting_container {
         visibility: hidden; /* Keep the space reserved */
@@ -119,13 +120,13 @@
 </div>
 
 <!-- General Game Info -->
-<div style='display: flex; justify-content: space-between; font-size: 1.25em; padding: 0px 20px 0px 20px;'>
+<div id='general_game_info' style='display: flex; justify-content: space-between; font-size: 1.25em; padding: 0px 20px 0px 20px;'>
     <span>
+        <b>Round {{player.round_number}} of {{C.NUM_ROUNDS}}</b>
     {{ if is_random_matching }}
-        <b>Round {{player.super_game_round_number}} of {{C.NUM_ROUNDS}}</b>
     {{else}}
-        <b>Round {{player.super_game_round_number}} of {{C.ROUNDS_PER_SUPERGAME}}</b>
         Now playing with <b>Player #{{player.opponent_number}}</b>
+        <b>Round {{player.super_game_round_number}} of {{C.ROUNDS_PER_SUPERGAME}}</b> with that player.
     {{endif}}
     </span>
 </div>
@@ -170,7 +171,7 @@
 <div id='textual_results' class="hidden_info card mb-2 card-body bg-light notdisplay"><!--generated in JS--></div> 
 
 <!-- historical payoffs table -->
-<div id="history table" class="hidden_info card mb-2 card-body bg-light">
+<div id="history_table_container" class="hidden_info card mb-2 card-body bg-light">
     {{ if player.round_number > 1 }}
 
         {{ if is_new_supergame }}
@@ -180,7 +181,7 @@
         {{ else }}
 
             <table class="table" style='text-align: center;'>
-                <b>Game History</b> {{if is_random_matching}}{{else}} <b>with current opponent</b>{{endif}}:
+                <h3><b>Game History</b> {{if is_random_matching}}{{else}} <b>with current opponent</b>{{endif}}</h3>
             <tr>
                 <th>Round<br>Number</th>
                 <th>Your<br>Action</th>
@@ -217,8 +218,8 @@
 
 <script>
     let timerElement = document.getElementById('timer');
-    let countdown = js_vars.desicion_time;
-    let results_time = js_vars.results_time;
+    let countdown = js_vars.time_limit.decision;
+    let results_time = js_vars.time_limit.results;
     let timerInterval;
     const nextButton = document.querySelector('.otree-btn-next');
     // ensures the random action is invoked after page is loaded so that (orelse livesend won't work), also, that the AFK div was loaded
@@ -391,7 +392,7 @@
             }
         }
 
-        set_textual_results(me_cooperate, opponent_cooperate, payoffs_dict.payoff, payoffs_dict.forgone, payoffs_dict.opponent_payoff, payoffs_dict.penalty) 
+        set_textual_results(me_cooperate, opponent_cooperate, payoffs_dict.payoff, payoffs_dict.forgone, payoffs_dict.opponent_payoff, payoffs_dict.penalty)
         
             // add 'Next' button
         nextdiv = document.getElementById('next_button_container')
@@ -432,7 +433,8 @@
                 The other player chose <span class="p2">${opponent_cooperate ? 'LEFT' : 'RIGHT'}</span>.<br>
                 As a result, you <b><span class="p1">${payoff_text}</span></b> (after penalty deduction).<br>
                 If the system would have chosen differently, you would have <span class="forgone_text">${forgone_text}</span>.<br>
-                The other player ${opponent_payoff_text}.`}
+                The other player ${opponent_payoff_text}.`}<br>
+                {{if is_random_matching}}<span><i> Note: you will be matched with a new partner for the next round.</i></span>{{endif}}
             </p>
         `;
         text_div.innerHTML = text;

@@ -21,7 +21,9 @@ class C(BaseConstants):
     PAYOFF_CD_PROB_HIGH = 0.9
     PENALTY = cu(5)
     IS_TEST = False
-    DECISION_TIMEOUT = 10
+    DECISION_TIMEOUT = 15
+    FIRST_ROUNDS_TIMOUT = 30
+    FRIST_ROUNDS_NUM_FOR_EXTRA_TIME = 3
     RANDOM_BONUS_LOWER_BOUND = 1350
     RANDOM_BONUS_UPPER_BOUND = 5700
     PAYOFF_MATRIX = {
@@ -150,6 +152,10 @@ class Player(BasePlayer):
     is_description = models.BooleanField()
     is_pass = models.IntegerField(label='   ')
     is_dropout = models.BooleanField(initial=False)
+    screen_width_px = models.FloatField()
+    screen_height_px = models.FloatField()
+    mobile_device = models.StringField()
+    device_info = models.StringField()
 def other_player(player: Player):
     return player.get_others_in_group()[0]
 def set_payoff(player: Player):
@@ -277,6 +283,9 @@ class InformedConsentPage(Page):
             bonus_fee = player.session.config['bonus_payment'],
         )
 class Introduction(Page):
+    form_model = 'player'
+    form_fields = ['screen_width_px', 'screen_height_px', 'mobile_device', 'device_info']
+
     @staticmethod
     def is_displayed(player: Player):
         return player.round_number == 1 # and not C.IS_TEST
@@ -356,14 +365,19 @@ class Decision(Page):
     
     @staticmethod
     def js_vars(player: Player):
+        is_random_matching = player.session.config['random_matching']
+        is_extra_time = (player.round_number if is_random_matching else player.super_game_round_number) <= C.FRIST_ROUNDS_NUM_FOR_EXTRA_TIME
+        time_limit = dict(
+            decision = C.FIRST_ROUNDS_TIMOUT if is_extra_time else C.DECISION_TIMEOUT,
+            results = C.FIRST_ROUNDS_TIMOUT if is_extra_time else C.DECISION_TIMEOUT,
+        )
         return dict(subsequent_timeoutes=player.subsequent_timeoutes,
                     is_dropout=player.is_dropout,
-                    desicion_time = C.DECISION_TIMEOUT,
-                    results_time = C.DECISION_TIMEOUT,
+                    time_limit = time_limit,
+                    is_random_matching = is_random_matching,
                     already_made_desicion = (player.field_maybe_none('cooperate') != None),
                     cooperate = player.field_maybe_none('cooperate'),
                     )
-    
     
     @staticmethod
     def live_method(player: Player, data):
