@@ -10,6 +10,14 @@
     .p2.col {margin-right: -20px;}
     .otree-title {font-size: 2em;}
     h2 {font-size: 1.5em;}
+
+    .highlight1 { background-color: rgb(160, 182, 243) !important; }
+    .highlight2 { background-color: rgb(243, 214, 160) !important; }
+    .highlightcell { border-style: solid ; border-width: thick !important; }
+    .result_payoff {font-size: x-large;}
+    .forgone {font-size: larger; color: rgb(63, 63, 219); font-style: italic; text-decoration: line-through;}
+    .opponent_payoff {font-size: smaller;}
+    .opacity {opacity: 0;}
 </style>
 
 {{ if is_random_matching}}
@@ -65,12 +73,57 @@
 
         <br>The payoff table shown above will be displayed on the screen for the entire duration of the game.
     </p>
-{{else}} 
     <h2> Game Scores</h2>
     <p>
-        After both you and the other player have chosen your actions, your score will be displayed in the appropriate table cell. The score will depend on your actions and a bit of randomness. Neither you nor the other participants know the exact scoring distribution, but you can learn it as you gain experience in the game.
+        After both you and the other player have chosen your actions, your score will be displayed in the appropriate table cell.
     </p>
-{{endif}}
+{{endif}} 
+<h2> Game Scores</h2>
+<p>
+    After both you and the other player have chosen your actions, your score will be displayed in the appropriate table cell.
+    {{ if not is_description }} The score will depend on your actions and a bit of randomness. Neither you nor the other participants know the exact scoring distribution, but you can learn it as you gain experience in the game.{{endif}}
+</p>
+<h4>Example for game score</h4>
+<p>
+    For example, assuming you chose <span class="p1">DOWN</span>, and the other player chose <span class="p2">LEFT</span>, this is how you will see the results on the table:
+</p>
+<!-- results payoffs table -->
+<div class="form-group required hidden_info card mb-2 card-body bg-light">
+    <table class="table table-bordered text-center" style="width: auto; margin: auto">
+        <tr class="p2">
+            <th colspan="2" rowspan="2"></th>
+            <th colspan="2">Other player</th>
+        </tr>
+        <tr class="p2">
+            <th class="highlight2">LEFT</th>
+            <th>RIGHT</th>
+        </tr>
+        <tr>
+            <th rowspan="2" class="p1"><span>You</span></th>
+            <td><button name="intro_butt" class="btn btn-primary btn-large" disabled>UP</button></td>
+            <td><div class="p1 col forgone">{{example_forgone_payoff_p1}} </div><br><div class="p2 col result_payoff opacity">text to fill space</div></td>
+            <td><div class="p1 col"> </div> <br> <div class="p2 col"> </div></td>
+        </tr>
+        <tr>
+            <td class="highlight1"><button name="intro_butt" class="btn btn-primary btn-large" disabled>DOWN</button></td>
+            <td class="highlightcell"><div class="p1 col result_payoff">{{example_payoff_p1}}</div> <br> <div class="p2 col opponent_payoff">{{example_payoff_p2}}</div></td>
+            <td><div class="p1 col opacity"> text to fill space</div><br> <div class="p2 col"> </div></td>
+        </tr>
+    </table>
+</div>
+
+<br> Note that <span class="p1 result_payoff">your payoff</span> is displayed in a large font and blue color. Your <span class="forgone">forgone payoff</span> is shown with a line-through decoration.
+<p>Additionally, you will receive this information in a short text paragraph, like the one below:</p>
+
+<div id='textual_results' class="hidden_info card mb-2 card-body bg-light">
+    <p>
+        You chose <b><span class="p1">DOWN</span></b> and the other player chose <span class="p2">LEFT</span>, hence 
+        you <b><span class="p1">got {{example_payoff_p1}}</span></b>.<br>
+        Had you chosen to play differently (i.e, UP) you would have <span class="forgone_text">gotten {{example_forgone_payoff_p1}}</span>.<br>
+        The other player got {{example_payoff_p2}}.
+    </p>
+</div>
+
 <h2>
     Decision Time and Feedback
 </h2>
@@ -83,9 +136,11 @@
     Note that you will only be able to proceed to the next round after the other player has made their choice and also proceeds to the next round.<br>
 After both you and the other player make your choices, you will see your payoff for that round. Additionally, you will see the payoff that you would have gotten had you chosen otherwise. Lastly, you will see the choice the other player made and the payoff they received.
 </p>
+{{ if is_description }}
 <p>
     In each round, the history of choices and payoffs of both you and the other player will be presented to you, so you can review them before making a new choice.
 </p>
+{{ endif }}
 <h2>
     Pairs and Rounds
 </h2>

@@ -163,8 +163,8 @@ def set_payoff(player: Player):
         return  # for the last 3 rounds of risk preferences survey
     
     other = other_player(player)
-    player.rnd_num_for_payoff = random.random() if player.field_maybe_none('rnd_num_for_payoff') is None else player.rnd_num_for_payoff
-    other.rnd_num_for_payoff = random.random() if other.field_maybe_none('rnd_num_for_payoff') is None else other.rnd_num_for_payoff
+    player.rnd_num_for_payoff = random.random() if other.field_maybe_none('rnd_num_for_payoff') is None else other.rnd_num_for_payoff
+    other.rnd_num_for_payoff = random.random() if player.field_maybe_none('rnd_num_for_payoff') is None else player.rnd_num_for_payoff
 
     def calculate_payoff(payoff_val, random_treshold):
         if type(payoff_val) == list:  # Returns the payoff based on a random draw and the given probabilities
@@ -352,6 +352,9 @@ class Introduction(Page):
             desc_other = text_desc_other,
             is_random_matching = player.session.config['random_matching'],
             is_description = player.session.config['is_description'],
+            example_payoff_p1 = add_points_text(payoff_matrix[(False, True)][0]),
+            example_payoff_p2 =  add_points_text(payoff_matrix[(True, False)][0]),
+            example_forgone_payoff_p1 = add_points_text(payoff_matrix[(True, True)][0]),
             show_up_fee = int(player.session.config['participation_fee']),
             bonus_fee = player.session.config['bonus_payment'],
             bonus_example_points = bonus_example_points,
@@ -475,6 +478,7 @@ class Decision(Page):
             t_left = text_left,
             t_right = text_right,
             is_random_matching = player.session.config['random_matching'],
+            is_history_table = player.session.config['is_description'],
             is_played = (player.field_maybe_none('cooperate') != None),
         )
     @staticmethod

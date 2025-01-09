@@ -6,7 +6,7 @@ class PlayerBot(Bot):
     def play_round(self):
         if self.player.round_number == 1:
             yield InformedConsentPage
-            yield Introduction
+            yield Introduction, dict(screen_width_px=1, screen_height_px=1, mobile_device='test_bot', device_info='test_bot')
         yield Submission(
             Decision,
             dict(

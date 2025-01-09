@@ -170,43 +170,45 @@
 <!-- textual_results -->
 <div id='textual_results' class="hidden_info card mb-2 card-body bg-light notdisplay"><!--generated in JS--></div> 
 
-<!-- historical payoffs table -->
-<div id="history_table_container" class="hidden_info card mb-2 card-body bg-light">
-    {{ if player.round_number > 1 }}
+{{ if is_history_table }}
+    <!-- historical payoffs table -->
+    <div id="history_table_container" class="hidden_info card mb-2 card-body bg-light">
+        {{ if player.round_number > 1 }}
 
-        {{ if is_new_supergame }}
+            {{ if is_new_supergame }}
 
-            Note that this is a new opponent, so no history is presented yet. <br>
+                Note that this is a new opponent, so no history is presented yet. <br>
 
-        {{ else }}
+            {{ else }}
 
-            <table class="table" style='text-align: center;'>
-                <h3><b>Game History</b> {{if is_random_matching}}{{else}} <b>with current opponent</b>{{endif}}</h3>
-            <tr>
-                <th>Round<br>Number</th>
-                <th>Your<br>Action</th>
-                <th>Your<br>Payoff</th>
-                <th>Forgone<br>Payoff</th>
-                <th>Opponent's<br>Action</th>
-                <th>Opponent's<br>Payoff</th>
-            </tr>
-
-            {{ for past_player in history }}
+                <table class="table" style='text-align: center;'>
+                    <h3><b>Game History</b> {{if is_random_matching}}{{else}} <b>with current opponent</b>{{endif}}</h3>
                 <tr>
-                    <td>{{if is_random_matching}}{{past_player.round_number}}{{else}}{{ past_player.super_game_round_number}}{{endif}}</td>
-                    <td>{{ if past_player.cooperate }}UP{{ else }}DOWN{{ endif }}</td>
-                    <td>{{ past_player.payoff }}{{ if past_player.penalty > 0}} <i>(inc. penalty)</i>{{ endif }}</td> 
-                    <td style="text-decoration: line-through;">{{ past_player.forgone_payoff}}{{ if past_player.penalty > 0}} <i>(inc. penalty)</i>{{ endif }}</td> 
-                    <td>{{ if past_player.opponent_cooperate }}LEFT{{ else }}RIGHT{{ endif }}</td>
-                    <td>{{ past_player.opponent_payoff }}</td>
-
+                    <th>Round<br>Number</th>
+                    <th>Your<br>Action</th>
+                    <th>Your<br>Payoff</th>
+                    <th>Forgone<br>Payoff</th>
+                    <th>Opponent's<br>Action</th>
+                    <th>Opponent's<br>Payoff</th>
                 </tr>
-            {{ endfor }}
-            </table>
-        {{ endif }}
 
-    {{ endif }}
-</div>
+                {{ for past_player in history }}
+                    <tr>
+                        <td>{{if is_random_matching}}{{past_player.round_number}}{{else}}{{ past_player.super_game_round_number}}{{endif}}</td>
+                        <td>{{ if past_player.cooperate }}UP{{ else }}DOWN{{ endif }}</td>
+                        <td>{{ past_player.payoff }}{{ if past_player.penalty > 0}} <i>(inc. penalty)</i>{{ endif }}</td> 
+                        <td style="text-decoration: line-through;">{{ past_player.forgone_payoff}}{{ if past_player.penalty > 0}} <i>(inc. penalty)</i>{{ endif }}</td> 
+                        <td>{{ if past_player.opponent_cooperate }}LEFT{{ else }}RIGHT{{ endif }}</td>
+                        <td>{{ past_player.opponent_payoff }}</td>
+
+                    </tr>
+                {{ endfor }}
+                </table>
+            {{ endif }}
+
+        {{ endif }}
+    </div>
+{{ endif }}
 
 <div id="hidden div" style="display: none;">
     {{ formfield 'is_pass' }}
@@ -406,14 +408,11 @@
             nextdiv.style.opacity = "1";
             if (js_vars.is_dropout) {nextButton.click()}
         }, 500)
-        
-
-            // add short text and delet results.html
     }
 
     function set_textual_results(cooperate, opponent_cooperate, payoff, forgone, opponent_payoff, penalty) {
-        const value_to_text = (v) => v === 0 ? `got ${v}` : (v > 0 ? `gained ${v}` : `lost ${Math.abs(v)}`);
-        const forgone_value_to_text = (v) => v === 0 ? `gotten ${v}` : (v > 0 ? `gained ${v}` : `lost ${Math.abs(v)}`);
+        const value_to_text = (v) => (v === 0 ? `got ${v}` : (v > 0 ? `gained ${v}` : `lost ${Math.abs(v)}`)) + ' points';
+        const forgone_value_to_text = (v) => (v === 0 ? `gotten ${v}` : (v > 0 ? `gained ${v}` : `lost ${Math.abs(v)}`)) + ' points';
         const text_div = document.getElementById('textual_results');
 
         const payoff_text = value_to_text(payoff);
