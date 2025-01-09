@@ -1,7 +1,7 @@
 from os import environ
 SESSION_CONFIG_DEFAULTS = dict(real_world_currency_per_point=0, 
-                               participation_fee=4,
-                               bonus_payment=4,
+                               participation_fee=6,
+                               bonus_payment=6,
                                turned_away_fee=3,)
 
 SESSION_CONFIGS = [
@@ -68,7 +68,8 @@ ROOMS = [
 
 ADMIN_USERNAME = 'admin'
 # for security, best to set admin password in an environment variable
-ADMIN_PASSWORD = environ.get('OTREE_ADMIN_PASSWORD')  # ppd
+ADMIN_PASSWORD = environ.get('OTREE_ADMIN_PASSWORD')  #ppd
+
 DEBUG = environ.get('DEBUG', 'False').lower() == 'true'
 
 SECRET_KEY = 'blahblah'
