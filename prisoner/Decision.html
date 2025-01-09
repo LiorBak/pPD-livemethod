@@ -221,8 +221,12 @@
 <script>
     let timerElement = document.getElementById('timer');
     let countdown = js_vars.time_limit.decision;
+    let isTimerRunning = false;
+    let reasonable_wait_time_count = js_vars.time_limit.decision;
     let results_time = js_vars.time_limit.results;
     let timerInterval;
+    let waitInterval;
+    const waiting_info_textEL = document.getElementById('waiting_info');
     const nextButton = document.querySelector('.otree-btn-next');
     // ensures the random action is invoked after page is loaded so that (orelse livesend won't work), also, that the AFK div was loaded
     if (document.readyState === 'complete' || document.readyState === 'interactive') {
@@ -231,14 +235,17 @@
         document.addEventListener('DOMContentLoaded', function () {onLoad()})         
     }
     
-    function onLoad() {
+    function onLoad(desicion=null) {
+        forminputs.subsequent_timeoutes.value = js_vars.subsequent_timeoutes
+        
+        if (desicion != null) {js_vars.already_made_desicion = true; js_vars.cooperate = desicion;}
         if (js_vars.already_made_desicion) {
             // in case player refreshed the page after he already sent desicion to the server
             simulate_action_click(js_vars.cooperate)
-        }
-        forminputs.subsequent_timeoutes.value = js_vars.subsequent_timeoutes
+        } else {
             // Start the timer on page load
-        startTimer();
+            startTimer();;
+        }
         dropout_handler();
     }
     
@@ -259,6 +266,8 @@
         }        
     }
     function startTimer() {
+        if (isTimerRunning) return; // Prevent multiple timers
+        isTimerRunning = true;
         timerElement.style.display = 'block';
         updateTimerDisplay()
         timerInterval = setInterval(() => {
@@ -271,6 +280,7 @@
 
             if (countdown <= 0) {
                 clearInterval(timerInterval);
+                isTimerRunning = false;
                 onTimerEnd();
             }
         }, 1000);
@@ -296,7 +306,25 @@
     };
     function stopTimer() {
         clearInterval(timerInterval);
+        isTimerRunning = false;
         timerElement.style.display = 'none';
+    }
+    function waiting_timer_start() {
+        waitInterval = setInterval(() => {
+            reasonable_wait_time_count--;
+            if (reasonable_wait_time_count <= 0) {
+                clearInterval(waitInterval);
+                waiting_info_textEL.innerHTML = "Please refresh the page"
+                waiting_timer_reset()
+                onLoad(forminputs.cooperate.value)
+            }
+        }, 1000);
+    }
+    function waiting_timer_reset() {
+        reasonable_wait_time_count = js_vars.time_limit.decision;
+    }
+    function waiting_timer_stop() {
+        clearInterval(waitInterval);
     }
     function simulate_action_click(cooperate){
         function simulate_click(cooperate){
@@ -314,12 +342,14 @@
         }
     }
     function play_random_action(){
-        let rnd_cooperate = Math.random() < 0.5
+        let rnd_cooperate = js_vars.cooperate ?? Math.random() < 0.5 // if desicion already made - don't use random
+        if (forminputs.cooperate.value !== "") {rnd_cooperate = forminputs.cooperate.value}
         simulate_action_click(rnd_cooperate)
     }
 
     function action_clicked(button, user_click=true) { //called when btn clicked
         stopTimer()
+        waiting_timer_start()
         is_timeout = !(countdown>0)
 
         forminputs.cooperate.value = button.value;
@@ -341,6 +371,7 @@
 
     function display_resutls(me_cooperate, opponent_cooperate, payoffs_dict){
         resetTimer(results_time) // time to see results
+        waiting_timer_stop()
         hideWaitingMessage()
            
         const dtable = document.getElementById('table1')

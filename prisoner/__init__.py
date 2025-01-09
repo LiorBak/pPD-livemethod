@@ -386,7 +386,7 @@ class Decision(Page):
     def live_method(player: Player, data):
         # player here is the sender of the msg
         player.cooperate = data['cooperate']
-        print('received a bid from player', player.id_in_group, ':', data, type(data))
+        print('received a bid from player', player.id_in_subsession, 'groupID', player.id_in_group, ':', data, type(data))
         opponent = other_player(player)
         opponent_cooperate = opponent.field_maybe_none('cooperate')
 
