@@ -1,23 +1,25 @@
 {{ extends 'global/Page.html' }}
-{{ block title }}Decision 1 of 3{{ endblock }}
+{{ block title }}Decision 1{{ endblock }}
 
 {{ block content }}
 
-Finally, please make 3 decisions.<br>
+Finally, make a few short decisions.<br>
+The decisions you make here will <b>not</b> affect future questions.<br>
+You can choose one of the following 'lottery tickets'.<br>
 Which of the following do you prefer?<br>
 
 A: 
-{{ if player.is_risk_first }}
-  <button name="c9_or_30at09_otherwise_minus270" value="False" class="btn btn-primary btn-large">9 points with certainty</button>
+{{ if not player.is_risk_first }}
+  <button name="prefer_300with01_over_23with05" value="False" class="btn btn-primary btn-large"><b>23</b> points with probability <b>5%</b></button>
 {{ else }}
-  <button name="c9_or_30at09_otherwise_minus270" value="True" class="btn btn-primary btn-large"><nobr>30 points with probability 90%</nobr>, and -270 otherwise</button>
+  <button name="prefer_300with01_over_23with05" value="True" class="btn btn-primary btn-large"><b>300</b> points with probability <b>1%</b></button>
 {{ endif }}
 <br>or
 <br>B: 
-{{ if not player.is_risk_first }}
-  <button name="c9_or_30at09_otherwise_minus270" value="False" class="btn btn-primary btn-large">9 points with certainty</button>
+{{ if player.is_risk_first }}
+  <button name="prefer_300with01_over_23with05" value="False" class="btn btn-primary btn-large"><b>23</b> points with probability <b>5%</b></button>
 {{ else }}
-  <button name="c9_or_30at09_otherwise_minus270" value="True" class="btn btn-primary btn-large"><nobr>30 points with probability 90%</nobr>, and -270 otherwise</button>
+  <button name="prefer_300with01_over_23with05" value="True" class="btn btn-primary btn-large"><b>300</b> points with probability <b>1%</b></button>
 {{ endif }}
  
 

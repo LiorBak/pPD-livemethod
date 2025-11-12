@@ -1,24 +1,28 @@
 {{ extends 'global/Page.html' }}
-{{ block title }}Decision 2 of 3{{ endblock }}
+{{ block title }}Decision 2{{ endblock }}
 
 {{ block content }}
 
-Great!<br><br><br>
-2 more decisions to go.<br>
-Please choose between:<br>
+Great!<br>  
+Now, make a new decision.<br>  
+Which of the following 'lottery tickets' do you prefer?<br>  
 
 C: 
-{{ if player.is_risk_first }}
-  <button name="c11_or_30at09_otherwise_minus270" value="False" class="btn btn-primary btn-large">11 points with certainty</button>
+{{ if not player.is_risk_first }}
+  <button name="prefer_8with05and12with05_over_30at09andMinus270at01" value="False" class="btn btn-primary btn-large">
+    <nobr><b>8</b> points with probability <b>5%</b></nobr>, and <br><b>12</b> points with probability <b>5%</b></button>
 {{ else }}
-  <button name="c11_or_30at09_otherwise_minus270" value="True" class="btn btn-primary btn-large"><nobr>30 points with probability 90%</nobr>, and -270 otherwise</button>
+  <button name="prefer_8with05and12with05_over_30at09andMinus270at01" value="True" class="btn btn-primary btn-large">
+    <nobr><b>30</b> points with probability <b>9%</b></nobr>, and <br><b>-270</b> points with probability <b>1%</b></button>
 {{ endif }}
 <br>or
 <br>D: 
-{{ if not player.is_risk_first }}
-  <button name="c11_or_30at09_otherwise_minus270" value="False" class="btn btn-primary btn-large">11 points with certainty</button>
+{{ if player.is_risk_first }}
+<button name="prefer_8with05and12with05_over_30at09andMinus270at01" value="False" class="btn btn-primary btn-large">
+  <nobr><b>8</b> points with probability <b>5%</b></nobr>, and <br><b>12</b> points with probability <b>5%</b></button>
 {{ else }}
-  <button name="c11_or_30at09_otherwise_minus270" value="True" class="btn btn-primary btn-large"><nobr>30 points with probability 90%</nobr>, and -270 otherwise</button>
+<button name="prefer_8with05and12with05_over_30at09andMinus270at01" value="True" class="btn btn-primary btn-large">
+  <nobr><b>30</b> points with probability <b>9%</b></nobr>, and <br><b>-270</b> points with probability <b>1%</b></button>
 {{ endif }}
 
 

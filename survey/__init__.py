@@ -23,19 +23,13 @@ class Player(BasePlayer):
                                 'Prefer not to say', 'Prefer not to say']], label='Indicate your gender', widget=widgets.RadioSelect)
     full_name = models.LongStringField(label='What is your full name? (for payment purposes only)')
     email = models.LongStringField(label='Your e-mail address @exeter (needed for payment and contact)')
-    in_right_p2 = models.IntegerField(
-        label='If player 1 plays OUT, and player 2 plays RIGHT, how much points would player 2 earn?')
-    in_left_p2 = models.IntegerField()
-    in_right_p1 = models.IntegerField()
-    Q_IN_RIGHT_P2_ASNWERS = models.LongStringField(initial='[')
     is_pass_test = models.IntegerField(label=' ')
     survey_optional_text = models.StringField(
         blank=True, label='Do you want to mention anything about your experience?')
     academic_degree = models.StringField(label='What academic degree are you currently pursuing?')
-    c7_or_30at09_otherwise_minus270 = models.BooleanField(label='')
-    c9_or_30at09_otherwise_minus270 = models.BooleanField()
-    c11_or_30at09_otherwise_minus270 = models.BooleanField()
-    questions_order = models.StringField()
+    prefer_300with01_over_23with05 = models.BooleanField()
+    prefer_8with05and12with05_over_30at09andMinus270at01 = models.BooleanField()
+    questions_order_300_first = models.BooleanField()
     is_risk_first = models.BooleanField()
     is_english_native_language = models.BooleanField(label='Is English your native language?')
 
@@ -45,18 +39,9 @@ def calc_is_risk_first(player: Player):
     player.is_risk_first = random.random() > 0.5
 
 
-class UnderstandingTest(Page):
-    form_model = 'player'
-    form_fields = ['in_right_p2', 'is_pass_test']
-
-    @staticmethod
-    def is_displayed(player: Player):
-        return False
-
-
 class RiskPreferences(Page):
     form_model = 'player'
-    form_fields = ['c9_or_30at09_otherwise_minus270']
+    form_fields = ['prefer_300with01_over_23with05']
 
     @staticmethod
     def vars_for_template(player: Player):
@@ -66,13 +51,7 @@ class RiskPreferences(Page):
 
 class RiskPreferences2(Page):
     form_model = 'player'
-    form_fields = ['c11_or_30at09_otherwise_minus270']
-
-
-class RiskPreferences3(Page):
-    form_model = 'player'
-    form_fields = ['c7_or_30at09_otherwise_minus270']
-
+    form_fields = ['prefer_8with05and12with05_over_30at09andMinus270at01']
 
 class Demographics(Page):
     form_model = 'player'
@@ -84,9 +63,7 @@ class Payment_info(Page):
     @staticmethod
     def vars_for_template(player: Player):
         participant = player.participant
-        # for player.payoff to resemble experiment payoff, so that participant.payoff_plus_participation_fee() will function properly
-        player.payoff = participant.bonus - participant.total_score  
-        player.session.config['real_world_currency_per_point'] = 1
+        # player.payoff = float(participant.bonus)  # for player.payoff to resemble experiment payoff, so that participant.payoff_plus_participation_fee() will function properly
         return dict(
             fwd_url=get_fwd_url(
                 participant.payoff_plus_participation_fee(),
@@ -110,5 +87,5 @@ def get_fwd_url(payment, label: str):
     return url + enc_data
 
 
-page_sequence = [UnderstandingTest, RiskPreferences, RiskPreferences2,
-                 RiskPreferences3, Demographics, Payment_info, EndOfExperiment]
+page_sequence = [RiskPreferences, RiskPreferences2,
+                 Demographics, Payment_info, EndOfExperiment]
