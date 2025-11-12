@@ -7,18 +7,8 @@ doc = '\nThis is a one-shot "Prisoner\'s Dilemma". Two players are asked separat
 class C(BaseConstants):
     NAME_IN_URL = 'prisoner'
     PLAYERS_PER_GROUP = 2
-    NUM_ROUNDS = 100
-    ROUNDS_PER_SUPERGAME = 10
-    PAYOFF_DC = cu(30)
-    PAYOFF_CC = cu(20)
-    PAYOFF_DD = cu(10)
-    PAYOFF_CD = cu(0)
-    PAYOFF_DC_HIGH = cu(300)
-    PAYOFF_DC_LOW = cu(0)
-    PAYOFF_DC_PROB_LOW = 0.9
-    PAYOFF_CD_HIGH = cu(30)
-    PAYOFF_CD_LOW = cu(-270)
-    PAYOFF_CD_PROB_HIGH = 0.9
+    NUM_ROUNDS = 5
+    ROUNDS_PER_SUPERGAME = 2
     PENALTY = cu(5)
     IS_TEST = False
     DECISION_TIMEOUT = 15
@@ -26,7 +16,7 @@ class C(BaseConstants):
     FRIST_ROUNDS_NUM_FOR_EXTRA_TIME = 3
     RANDOM_BONUS_LOWER_BOUND = 1350
     RANDOM_BONUS_UPPER_BOUND = 5700
-    PAYOFF_MATRIX = {
+    SCORE_MATRIX = {
         'PD': {
             (False, True): 30,
             (True, True): 20,
@@ -63,6 +53,31 @@ class C(BaseConstants):
             (False, False): [8, .5, 12],
             (True, False): [0, .9, 300],            
         },
+        
+        '-95EV-PD beh-PD': {  # behavioralPD_evPD
+            (False, True): [25, .95, 125],
+            (True, True): [17, .5, 23],
+            (False, False): [8, .5, 12],
+            (True, False): [5, .95, -95],            
+        },
+        '95EV-PD beh-CG': {  # behavioralCG_evPD
+            (False, True): [0, .95, 600],
+            (True, True): [17, .5, 23],
+            (False, False): [8, .5, 12],
+            (True, False): [30, .95, -570],            
+        },
+        '-95EV-CG beh-CG': {  # behavioralCG_evCG
+            (False, True): [5, .95, -95],
+            (True, True): [17, .5, 23],
+            (False, False): [8, .5, 12],
+            (True, False): [25, .95, 125],            
+        },
+        '95EV-CG beh-PD': {  # behavioralCG_evCG
+            (False, True): [30, .95, -570],
+            (True, True): [17, .5, 23],
+            (False, False): [8, .5, 12],
+            (True, False): [0, .95, 600],            
+        },
     }
 
     INSTRUCTIONS_TEMPLATE = 'prisoner/instructions.html'
@@ -79,7 +94,8 @@ def creating_session(subsession: Subsession):
     import math
     
     num_participants = subsession.session.num_participants
-    group_matrices = []
+    group_matrices = []  
+    # Round-Robin scheduling
     if num_participants == 4:
         group_matrices = [
             [[1, 2], [3, 4]],
@@ -96,15 +112,61 @@ def creating_session(subsession: Subsession):
         ]
     elif num_participants == 8:
         group_matrices = [
-            [[1, 2], [3, 4], [5, 6], [7, 8]],
-            [[1, 3], [2, 5], [4, 7], [6, 8]],
-            [[1, 4], [2, 6], [3, 8], [5, 7]],
-            [[1, 5], [2, 7], [3, 6], [4, 8]],
-            [[1, 6], [2, 8], [3, 7], [4, 5]],
-            [[1, 7], [2, 4], [3, 5], [6, 8]],
-            [[1, 8], [2, 3], [4, 6], [5, 7]],
+            [[1, 8], [2, 7], [3, 6], [4, 5]],
+            [[1, 7], [8, 6], [2, 5], [3, 4]],
+            [[1, 6], [7, 5], [8, 4], [2, 3]],
+            [[1, 5], [6, 4], [7, 3], [8, 2]],
+            [[1, 4], [5, 3], [6, 2], [7, 8]],
+            [[1, 3], [4, 2], [5, 8], [6, 7]],
+            [[1, 2], [3, 8], [4, 7], [5, 6]],
+        ]
+
+    elif num_participants == 10:
+        group_matrices = [
+            [[1, 10], [2, 9], [3, 8], [4, 7], [5, 6]],
+            [[1, 9], [10, 8], [2, 7], [3, 6], [4, 5]],
+            [[1, 8], [9, 7], [10, 6], [2, 5], [3, 4]],
+            [[1, 7], [8, 6], [9, 5], [10, 4], [2, 3]],
+            [[1, 6], [7, 5], [8, 4], [9, 3], [10, 2]],
+            [[1, 5], [6, 4], [7, 3], [8, 2], [9, 10]],
+            [[1, 4], [5, 3], [6, 2], [7, 10], [8, 9]],
+            [[1, 3], [4, 2], [5, 10], [6, 9], [7, 8]],
+            [[1, 2], [3, 10], [4, 9], [5, 8], [6, 7]],
+        ]
+
+    elif num_participants == 12:
+        group_matrices = [
+            [[1, 12], [2, 11], [3, 10], [4, 9], [5, 8], [6, 7]],
+            [[1, 11], [12, 10], [2, 9], [3, 8], [4, 7], [5, 6]],
+            [[1, 10], [11, 9], [12, 8], [2, 7], [3, 6], [4, 5]],
+            [[1, 9], [10, 8], [11, 7], [12, 6], [2, 5], [3, 4]],
+            [[1, 8], [9, 7], [10, 6], [11, 5], [12, 4], [2, 3]],
+            [[1, 7], [8, 6], [9, 5], [10, 4], [11, 3], [12, 2]],
+            [[1, 6], [7, 5], [8, 4], [9, 3], [10, 2], [11, 12]],
+            [[1, 5], [6, 4], [7, 3], [8, 2], [9, 12], [10, 11]],
+            [[1, 4], [5, 3], [6, 2], [7, 12], [8, 11], [9, 10]],
+            [[1, 3], [4, 2], [5, 12], [6, 11], [7, 10], [8, 9]],
+            [[1, 2], [3, 12], [4, 11], [5, 10], [6, 9], [7, 8]],
         ]
     
+    elif num_participants == 14:
+        group_matrices = [
+            [[1, 14], [2, 13], [3, 12], [4, 11], [5, 10], [6, 9], [7, 8]],
+            [[1, 13], [14, 12], [2, 11], [3, 10], [4, 9], [5, 8], [6, 7]],
+            [[1, 12], [13, 11], [14, 10], [2, 9], [3, 8], [4, 7], [5, 6]],
+            [[1, 11], [12, 10], [13, 9], [14, 8], [2, 7], [3, 6], [4, 5]],
+            [[1, 10], [11, 9], [12, 8], [13, 7], [14, 6], [2, 5], [3, 4]],
+            [[1, 9], [10, 8], [11, 7], [12, 6], [13, 5], [14, 4], [2, 3]],
+            [[1, 8], [9, 7], [10, 6], [11, 5], [12, 4], [13, 3], [14, 2]],
+            [[1, 7], [8, 6], [9, 5], [10, 4], [11, 3], [12, 2], [13, 14]],
+            [[1, 6], [7, 5], [8, 4], [9, 3], [10, 2], [11, 14], [12, 13]],
+            [[1, 5], [6, 4], [7, 3], [8, 2], [9, 14], [10, 13], [11, 12]],
+            [[1, 4], [5, 3], [6, 2], [7, 14], [8, 13], [9, 12], [10, 11]],
+            [[1, 3], [4, 2], [5, 14], [6, 13], [7, 12], [8, 11], [9, 10]],
+            [[1, 2], [3, 14], [4, 13], [5, 12], [6, 11], [7, 10], [8, 9]],
+        ]
+    
+
     if len(group_matrices) > 0:
         if subsession.round_number == 1:
             player = subsession.get_players()[0]
@@ -129,19 +191,21 @@ class Player(BasePlayer):
     cooperate = models.BooleanField(choices=[[True, 'Cooperate'], [False, 'Defect']], doc='This player s decision', widget=widgets.RadioSelect)
     opponent_id_in_session = models.StringField(initial='')
     game_type = models.StringField(initial='')
-    forgone_payoff = models.CurrencyField()
-    rnd_num_for_payoff = models.FloatField()
+    score =  models.CurrencyField(initial=0)
+    forgone_score = models.CurrencyField()
+    rnd_num_for_score = models.FloatField()
     opponent_cooperate = models.BooleanField()
-    opponent_payoff = models.CurrencyField()
+    opponent_score = models.CurrencyField()
     opponent_number = models.StringField(initial='A')
     super_game_round_number = models.IntegerField()
     penalty = models.CurrencyField(initial=0)
     opponent_penaly = models.CurrencyField(initial=0)
     total_score = models.CurrencyField(initial=0)
-    Email = models.StringField(label='Your e-mail address @exeter (needed for payment and contact)')
+    mean_cooperation = models.FloatField(initial=0)
     chance_to_win_bonus = models.FloatField()
+    random_number_for_bonus = models.FloatField()
     win_bonus = models.BooleanField()
-    total_experiment_payoffGDP = models.FloatField()
+    total_experiment_payoffGBP = models.FloatField()
     subsequent_timeoutes = models.IntegerField(initial=0)
     decision_time = models.FloatField()
     wait_for_other_time = models.FloatField()
@@ -152,6 +216,7 @@ class Player(BasePlayer):
     is_description = models.BooleanField()
     is_pass = models.IntegerField(label='   ')
     is_dropout = models.BooleanField(initial=False)
+    is_UPbutton_cooperation = models.BooleanField()
     screen_width_px = models.FloatField()
     screen_height_px = models.FloatField()
     mobile_device = models.StringField()
@@ -163,36 +228,40 @@ def set_payoff(player: Player):
         return  # for the last 3 rounds of risk preferences survey
     
     other = other_player(player)
-    player.rnd_num_for_payoff = random.random() if other.field_maybe_none('rnd_num_for_payoff') is None else other.rnd_num_for_payoff
-    other.rnd_num_for_payoff = random.random() if player.field_maybe_none('rnd_num_for_payoff') is None else player.rnd_num_for_payoff
+    player.rnd_num_for_score = random.random() if other.field_maybe_none('rnd_num_for_score') is None else other.rnd_num_for_score
+    other.rnd_num_for_score = random.random() if player.field_maybe_none('rnd_num_for_score') is None else player.rnd_num_for_score
 
-    def calculate_payoff(payoff_val, random_treshold):
-        if type(payoff_val) == list:  # Returns the payoff based on a random draw and the given probabilities
-               # sets both rnd tresholds to ensure opponent's payoff is calculated accuratly
-            return payoff_val[0] if random_treshold < payoff_val[1] else payoff_val[2]
+    def calculate_score(score_val, random_treshold):
+        if type(score_val) == list:  # Returns the payoff based on a random draw and the given probabilities
+               # sets both rnd tresholds to ensure opponent's score is calculated accuratly
+            return score_val[0] if random_treshold < score_val[1] else score_val[2]
         else:
-            return payoff_val
+            return score_val
 
-    payoff_matrix = C.PAYOFF_MATRIX[player.game_type]        
-    player.payoff = calculate_payoff(payoff_matrix[ (player.cooperate, other.cooperate) ], player.rnd_num_for_payoff)
-    player.forgone_payoff = calculate_payoff(payoff_matrix[ (not player.cooperate, other.cooperate) ], player.rnd_num_for_payoff)
-    player.opponent_payoff = calculate_payoff(payoff_matrix[ (other.cooperate, player.cooperate) ], other.rnd_num_for_payoff)
+    score_matrix = C.SCORE_MATRIX[player.game_type]        
+    player.score = calculate_score(score_matrix[ (player.cooperate, other.cooperate) ], player.rnd_num_for_score)
+    player.forgone_score = calculate_score(score_matrix[ (not player.cooperate, other.cooperate) ], player.rnd_num_for_score)
+    player.opponent_score = calculate_score(score_matrix[ (other.cooperate, player.cooperate) ], other.rnd_num_for_score)
     
-    player.payoff = player.payoff - player.penalty
-    player.forgone_payoff = player.forgone_payoff - player.penalty
+    player.score = player.score - player.penalty
+    player.forgone_score = player.forgone_score - player.penalty
     player.opponent_penaly = other.penalty
-    player.opponent_payoff = player.opponent_payoff - player.opponent_penaly
+    player.opponent_score = player.opponent_score - player.opponent_penaly
     
-    player.total_score = player.total_score + player.payoff  # total score is set to previous round when entering desicion page (func 'falues for new round')
+    # setting comulative values
+    player.total_score = player.total_score + player.score  # total score is set to previous round when entering desicion page (func 'falues for new round')
+    cooperate_int =  1 if player.cooperate else 0
+    r = player.round_number
+    player.mean_cooperation = cooperate_int if r == 1 else ((player.in_round(r-1).mean_cooperation*(r-1))+cooperate_int) / r
     
     # set more info
     player.opponent_id_in_session = str(other.participant.id_in_session)
     player.opponent_cooperate = other.cooperate
     
     return dict(
-        payoff=player.payoff,
-        forgone=player.forgone_payoff,
-        opponent_payoff = player.opponent_payoff,
+        score=player.score,
+        forgone=player.forgone_score,
+        opponent_score = player.opponent_score,
         penalty = player.penalty,
     )
 
@@ -202,6 +271,7 @@ def values_for_new_round(player: Player):
     
     player.is_random_matching = player.session.config['random_matching']
     player.is_description = player.session.config['is_description']
+    player.device_info = 'EV_display' if player.session.config['EV_display'] else ''
     
     if player.round_number > 1:
         #set repeeting values
@@ -212,6 +282,7 @@ def values_for_new_round(player: Player):
         player.total_score = player.in_round(player.round_number - 1).total_score
         player.subsequent_timeoutes = player.in_round(player.round_number - 1).subsequent_timeoutes
         player.is_dropout = player.subsequent_timeoutes >= 2
+        player.is_UPbutton_cooperation = player.in_round(1).is_UPbutton_cooperation
         # set charecter to visualize opponent
         if is_new_opponent:
             player.opponent_number = chr(ord(player.opponent_number)+1) 
@@ -221,7 +292,7 @@ def values_for_new_round(player: Player):
     
 def set_desicion_time(player: Player, called_from):
     # This funtion is called at page Desicion four times: 
-    # a) at vars for template - when page loads, b) when desicion is sent to the server c) when payoffs are calculated d) at before_bext_page - when page ends
+    # a) at vars for template - when page loads, b) when desicion is sent to the server c) when scores are calculated d) at before_bext_page - when page ends
     import time
     now = time.time()
     
@@ -230,17 +301,17 @@ def set_desicion_time(player: Player, called_from):
     elif called_from=='live_method function - wait for other':
         player.wait_for_other_time = now
         player.decision_time = now - player.decision_time
-    elif called_from=='live_method function - set payoffs':
+    elif called_from=='live_method function - set scores':
         player.results_time = now
         if player.field_maybe_none('wait_for_other_time') == None:  # the other player made desicion first
             player.wait_for_other_time = 0
             player.decision_time = now - player.decision_time
-        else:  #we already called this fucntion once from set payoffs
+        else:  #we already called this fucntion once from set scores
             player.wait_for_other_time = now - player.wait_for_other_time
     elif called_from=='decision before_next_page':
         player.results_time = now - player.results_time 
 
-def calc_total_payoff(player: Player):    
+def calc_total_score(player: Player):    
     chance_to_win = (float(player.total_score) + C.RANDOM_BONUS_LOWER_BOUND)/C.RANDOM_BONUS_UPPER_BOUND
     '''
     The lower and upper bounds of probability will be such that if a player plays only (C,D) [or  only (D,C)] for all 100 rounds, he will only have  a 5% (actually 4%) chance to hit the boundary. (Cumulative probability: P(x>15) when x is #getting -270 witn prob .1 in each)
@@ -253,12 +324,15 @@ def calc_total_payoff(player: Player):
     '''
     player.chance_to_win_bonus = chance_to_win
     random_number = random.uniform(0, 1)
+    player.random_number_for_bonus = random_number
     player.win_bonus = chance_to_win > random_number
     bonus = 0
     if player.win_bonus:
         bonus = player.session.config['bonus_payment']
-    total_payoff = player.session.config['participation_fee'] + bonus
-    player.total_experiment_payoffGDP = float(total_payoff)
+    player.payoff = float(bonus)  # for player.payoff to resemble experiment payoff, so that participant.payoff_plus_participation_fee() will function properly
+    total_payoffGBP = player.session.config['participation_fee'] + bonus
+    player.total_experiment_payoffGBP = float(total_payoffGBP)
+    player.participant.payoff_plus_participation_fee()
 
     # populate payoff values to participant level
     player.participant.vars['payoff'] = float(bonus)
@@ -267,6 +341,7 @@ def calc_total_payoff(player: Player):
     player.participant.vars['chance_to_win'] = chance_to_win*100
     player.participant.vars['random_lottery_number'] = random_number*100
     player.participant.vars['win_bonus'] = player.win_bonus
+    player.participant.vars['mean_cooperation'] = player.mean_cooperation
 
     return [chance_to_win, random_number]
 
@@ -294,24 +369,31 @@ class Introduction(Page):
         import time
         player.experiment_start_time = time.time()
         player.game_type = player.session.config['game_type']
+        player.is_UPbutton_cooperation = False if random.random()<.5 else True
         
-        
-        payoff_matrix = C.PAYOFF_MATRIX[player.game_type]
+        score_matrix = C.SCORE_MATRIX[player.game_type]
         add_got_text = lambda v: 'get '+ str(v) if v == 0 else ('gain '+ str(v) if v > 0 else 'lose ' + str(abs(v))) + ' points'
         # << copied from Desicion >>
         add_points_text = lambda v: str(v) + ' points'
-        def payoff_matrix_to_text(payoff_val): # Returns the payoffs text for the table
-            if type(payoff_val) == list: 
-                return f'{add_points_text(payoff_val[0])} with <nobr>{round(payoff_val[1]*100)}% chance,</nobr> and <nobr>{add_points_text(payoff_val[2])} with {round((1-payoff_val[1])*100)}% chance</nobr>'
+        def score_matrix_to_text(score_val): # Returns the scores text for the table
+            if type(score_val) == list: 
+                return f'{add_points_text(score_val[0])} with <nobr>{round(score_val[1]*100)}% chance,</nobr> and <nobr>{add_points_text(score_val[2])} with {round((1-score_val[1])*100)}% chance</nobr>'
             else:
-                return add_points_text(payoff_val)
+                return add_points_text(score_val)
         # << end of copied from Desicion >>
 
-        def payoff_matrix_to_description(payoff_val): # Returns the payoff text for the description
-            if type(payoff_val) == list:  
-                return f'{add_got_text(payoff_val[0])} with <nobr>probability {round(payoff_val[1],1)} ({round(payoff_val[1]*100)}% chance),</nobr> and <nobr>{add_got_text(payoff_val[2])} otherwise ({round((1-payoff_val[1])*100)}% chance)</nobr>'
+        def score_matrix_to_description(score_val): # Returns the score text for the description
+            if type(score_val) == list:  
+                return f'{add_got_text(score_val[0])} with <nobr>probability {round(score_val[1],2)} ({round(score_val[1]*100)}% chance),</nobr> and <nobr>{add_got_text(score_val[2])} otherwise ({round((1-score_val[1])*100)}% chance)</nobr>'
             else:
-                return add_got_text(payoff_val)
+                return add_got_text(score_val)
+        
+        def get_ev(matrix, player_coop, other_coop):
+            value = matrix[(bool(player_coop), bool(other_coop))]
+            if isinstance(value, list) and len(value) == 3:
+                a, p, b = value
+                return cu(int(round(p * a + (1 - p) * b)))
+            return cu(int(round(value)))
         
         # ---- set text for desicion table according to game type----
         text_left = {}
@@ -319,20 +401,46 @@ class Introduction(Page):
         text_desc_player = {}
         text_desc_other = {}
 
+        # if full description of payof structure:
         for i in [0, 1]:
             for j in [0,1]:
                 ti = 'C' if i == 1 else 'D'
                 tj = 'C' if j == 1 else 'D'
                 
-                text_left[f"{ti}{tj}"] = payoff_matrix_to_text(payoff_matrix[(i,j)]) #player
-                text_right[f"{ti}{tj}"] = payoff_matrix_to_text(payoff_matrix[(j,i)]) #opponent
+                text_left[f"{ti}{tj}"] = score_matrix_to_text(score_matrix[(i,j)]) #player
+                text_right[f"{ti}{tj}"] = score_matrix_to_text(score_matrix[(j,i)]) #opponent
 
                 # _______<< only for introduction >>__________
-                text_desc_player[f"{ti}{tj}"] = payoff_matrix_to_description(payoff_matrix[(i,j)])  #player
-                text_desc_other[f"{ti}{tj}"] = payoff_matrix_to_description(payoff_matrix[(j,i)])  #opponent
+                text_desc_player[f"{ti}{tj}"] = score_matrix_to_description(score_matrix[(i,j)])  #player
+                text_desc_other[f"{ti}{tj}"] = score_matrix_to_description(score_matrix[(j,i)])  #opponent
                 # _______<< end of 'only for introduction' >>______        
         
-        if not player.session.config['is_description']:
+        if player.session.config['EV_display']:
+            def add_ev_text(value):
+                return str(int(value)) + ' points in expectation'
+            text_left['CC'] = add_ev_text(get_ev(score_matrix, 1, 1))
+            text_left['CD'] = add_ev_text(get_ev(score_matrix, 1, 0))
+            text_left['DC'] = add_ev_text(get_ev(score_matrix, 0, 1))
+            text_left['DD'] = add_ev_text(get_ev(score_matrix, 0, 0))
+
+            text_right['CC'] = add_ev_text(get_ev(score_matrix, 1, 1))
+            text_right['CD'] = add_ev_text(get_ev(score_matrix, 1, 0))
+            text_right['DC'] = add_ev_text(get_ev(score_matrix, 1, 0))
+            text_right['DD'] = add_ev_text(get_ev(score_matrix, 0, 0))
+        # << end of copy from Desicion >>
+            for k, v in text_left.items():
+                text_desc_player[k] = 'get ' + v
+            for k, v in text_right.items():
+                text_desc_other[k] = 'get ' + v
+
+        # << adjust texts for counterbalanced players >>
+        if not player.is_UPbutton_cooperation:
+            for d in [text_left, text_right, text_desc_player, text_desc_other]:
+                d['CC'], d['DC'] = d['DC'], d['CC']
+                d['CD'], d['DD'] = d['DD'], d['CD']
+        
+        # << if players get don't get any descriptive payoffs - show some text >>
+        if not player.session.config['is_description'] and not player.session.config['EV_display']:
             text_left['CC'] = 'Up'
             text_left['CD'] = 'Up'
             text_left['DC'] = 'Down'
@@ -342,9 +450,30 @@ class Introduction(Page):
             text_right['CD'] = 'Right'
             text_right['DC'] = 'Left'
             text_right['DD'] = 'Right'
-        # << end of copy from Desicion >>
 
-        bonus_example_points = C.NUM_ROUNDS*15 #assuming 15 is the mean payoff per round
+        
+        bonus_example_points = C.NUM_ROUNDS*15 #assuming 15 is the mean score per round
+
+        # << example score >>
+        def calculate_score(score_val, random_treshold):
+            if type(score_val) == list:  # Returns the payoff based on a random draw and the given probabilities
+                return score_val[0] if random_treshold < score_val[1] else score_val[2]
+            else:
+                return score_val
+
+        random_treshold = 0.1
+        score_matrix = C.SCORE_MATRIX[player.game_type]        
+        example_action = False if player.is_UPbutton_cooperation else True
+        example_action_other = True
+        example_score_p1 = add_points_text(calculate_score(score_matrix[ (example_action, example_action_other) ], random_treshold))
+        example_forgone_score_p1 =  add_points_text(calculate_score(score_matrix[ (not example_action, example_action_other) ], random_treshold))
+        example_score_p2 = add_points_text(calculate_score(score_matrix[ (example_action_other, example_action) ], random_treshold))
+
+        if player.session.config['EV_display']:
+            example_score_p1 = get_ev(score_matrix, example_action, example_action_other)
+            example_forgone_score_p1 = get_ev(score_matrix, not example_action, example_action_other)
+            example_score_p2 = get_ev(score_matrix, example_action_other, example_action)
+
         return dict(
             t_left = text_left,
             t_right = text_right,
@@ -352,9 +481,11 @@ class Introduction(Page):
             desc_other = text_desc_other,
             is_random_matching = player.session.config['random_matching'],
             is_description = player.session.config['is_description'],
-            example_payoff_p1 = add_points_text(payoff_matrix[(False, True)][0]),
-            example_payoff_p2 =  add_points_text(payoff_matrix[(True, False)][0]),
-            example_forgone_payoff_p1 = add_points_text(payoff_matrix[(True, True)][0]),
+            is_EV_display = player.session.config['EV_display'],
+            example_score_p1 = example_score_p1,
+            example_score_p2 =  example_score_p2,
+            example_forgone_score_p1 = example_forgone_score_p1,
+            is_UPbutton_cooperation = player.is_UPbutton_cooperation,
             show_up_fee = int(player.session.config['participation_fee']),
             bonus_fee = player.session.config['bonus_payment'],
             bonus_example_points = bonus_example_points,
@@ -378,6 +509,7 @@ class Decision(Page):
                     is_dropout=player.is_dropout,
                     time_limit = time_limit,
                     is_random_matching = is_random_matching,
+                    is_UPcooperation = player.is_UPbutton_cooperation,
                     already_made_desicion = (player.field_maybe_none('cooperate') != None),
                     cooperate = player.field_maybe_none('cooperate'),
                     )
@@ -396,26 +528,26 @@ class Decision(Page):
             set_desicion_time(player, 'live_method function - wait for other')
             return
         else: 
-            set_desicion_time(player, 'live_method function - set payoffs')
-            set_desicion_time(opponent, 'live_method function - set payoffs')
+            set_desicion_time(player, 'live_method function - set scores')
+            set_desicion_time(opponent, 'live_method function - set scores')
 
-        payoffs_dict_me = None
-        payoffs_dict_opponent = None
+        scores_dict_me = None
+        scores_dict_opponent = None
         if opponent_cooperate is not None:
-            payoffs_dict_me = set_payoff(player)
-            payoffs_dict_opponent = set_payoff(opponent)
+            scores_dict_me = set_payoff(player)
+            scores_dict_opponent = set_payoff(opponent)
 
         action_data_me = {
             'cooperate': player.cooperate,
             'sender_id_in_group': player.id_in_group,
             'opponent_cooperate': opponent_cooperate,
-            'payoffs_dict': payoffs_dict_me,
+            'scores_dict': scores_dict_me,
         }
         action_data_opp = {
             'cooperate': opponent.cooperate,
             'sender_id_in_group': opponent.id_in_group,
             'opponent_cooperate': player.cooperate,
-            'payoffs_dict': payoffs_dict_opponent,
+            'scores_dict': scores_dict_opponent,
             'passive': True,
         }
 
@@ -440,14 +572,14 @@ class Decision(Page):
             past_player = player.in_round(round_number)
             history.append(past_player)
         
-        # ---- Define payoff_matrix -------
-        payoff_matrix = C.PAYOFF_MATRIX[player.game_type]
+        # ---- Define score_matrix -------
+        score_matrix = C.SCORE_MATRIX[player.game_type]
         add_points_text = lambda v: str(v) + ' points'
-        def payoff_matrix_to_text(payoff_val):
-            if type(payoff_val) == list:  # Returns the payoff description for the table
-                return f'{add_points_text(payoff_val[0])} with <nobr>{round(payoff_val[1]*100)}% chance,</nobr> and <nobr>{add_points_text(payoff_val[2])} with {round((1-payoff_val[1])*100)}% chance</nobr>'
+        def score_matrix_to_text(score_val):
+            if type(score_val) == list:  # Returns the score description for the table
+                return f'{add_points_text(score_val[0])} with <nobr>{round(score_val[1]*100)}% chance,</nobr> and <nobr>{add_points_text(score_val[2])} with {round((1-score_val[1])*100)}% chance</nobr>'
             else:
-                return add_points_text(payoff_val)
+                return add_points_text(score_val)
         
         # ---- set text for desicion table according to game type----
         text_left = {}
@@ -457,9 +589,37 @@ class Decision(Page):
             for j in [0,1]:
                 ti = 'C' if i == 1 else 'D'
                 tj = 'C' if j == 1 else 'D'
-                text_left[f"{ti}{tj}"] = payoff_matrix_to_text(payoff_matrix[(i,j)])  #player
-                text_right[f"{ti}{tj}"] = payoff_matrix_to_text(payoff_matrix[(j,i)])  #opponent
+                text_left[f"{ti}{tj}"] = score_matrix_to_text(score_matrix[(i,j)])  #player
+                text_right[f"{ti}{tj}"] = score_matrix_to_text(score_matrix[(j,i)])  #opponent
+
+        if player.session.config['EV_display']:
+            def get_ev(matrix, player_coop, other_coop):
+                value = matrix[(bool(player_coop), bool(other_coop))]
+                if isinstance(value, list) and len(value) == 3:
+                    a, p, b = value
+                    return cu(int(round(p * a + (1 - p) * b)))
+                return cu(int(round(value)))
+            def add_ev_text(value):
+                return str(int(value)) + ' points in expectation'
+            text_left['CC'] = add_ev_text(get_ev(score_matrix, 1, 1))
+            text_left['CD'] = add_ev_text(get_ev(score_matrix, 1, 0))
+            text_left['DC'] = add_ev_text(get_ev(score_matrix, 0, 1))
+            text_left['DD'] = add_ev_text(get_ev(score_matrix, 0, 0))
+
+            text_right['CC'] = add_ev_text(get_ev(score_matrix, 1, 1))
+            text_right['CD'] = add_ev_text(get_ev(score_matrix, 1, 0))
+            text_right['DC'] = add_ev_text(get_ev(score_matrix, 1, 0))
+            text_right['DD'] = add_ev_text(get_ev(score_matrix, 0, 0))
+        # << end of copy from Desicion >>
+
+        # << adjust texts for counterbalanced players >>
+        if not player.is_UPbutton_cooperation:
+            for d in [text_left, text_right]:
+                d['CC'], d['DC'] = d['DC'], d['CC']
+                d['CD'], d['DD'] = d['DD'], d['CD']
         
+
+        # << if players get don't get any descriptive payoffs - show some text >>
         if not player.session.config['is_description']:
             text_left['CC'] = 'Up'
             text_left['CD'] = 'Up'
@@ -472,14 +632,17 @@ class Decision(Page):
             text_right['DD'] = 'Right'
 
         # ------------------
+
         return dict(
             is_new_supergame = (is_new_opponent and not player.session.config['random_matching']),
             history = history,
             t_left = text_left,
             t_right = text_right,
             is_random_matching = player.session.config['random_matching'],
-            is_history_table = player.session.config['is_description'],
+            is_history_table = not player.session.config['random_matching'],
             is_played = (player.field_maybe_none('cooperate') != None),
+            is_UPbutton_cooperation = player.is_UPbutton_cooperation,
+            class_experiment = player.session.config['class_experiment'],
         )
     @staticmethod
     def before_next_page(player: Player, timeout_happened):
@@ -495,7 +658,7 @@ class ResultsWaitPage(WaitPage):
 class EndOfSuperGame(Page):
     @staticmethod
     def is_displayed(player: Player):
-        return (player.super_game_round_number == C.ROUNDS_PER_SUPERGAME) and not player.session.config['random_matching']
+        return (player.super_game_round_number == C.ROUNDS_PER_SUPERGAME) and not player.session.config['random_matching'] and not (player.round_number == C.NUM_ROUNDS)
     @staticmethod
     def vars_for_template(player: Player):
         # ---- set history for historical scores table -------
@@ -523,7 +686,7 @@ class EndOfExperiment(Page):
         import time
         player.experiment_end_time = time.time()
         player.experiment_start_time = player.in_round(1).field_maybe_none('experiment_start_time')
-        chance_to_win, random_number = calc_total_payoff(player)
+        chance_to_win, random_number = calc_total_score(player)
         
         return dict(
             bonus_chance = chance_to_win*100,
@@ -531,6 +694,7 @@ class EndOfExperiment(Page):
             lottery_num = random_number,
             show_up_fee = int(player.session.config['participation_fee']),
             bonus_fee = player.session.config['bonus_payment'],
+            class_experiment=player.session.config['class_experiment'],
         )
 class ReadMe(Page):
     pass

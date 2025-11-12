@@ -1,4 +1,5 @@
 {{ extends 'global/Page.html' }}
+
 {{ block title }}Choose Your Strategy: Up or Down?{{ endblock }}
 
 {{ block content }}
@@ -88,6 +89,7 @@
 </style>
 
 {{formfield_errors 'cooperate' }}
+
 <div id="timer">Time left: </div>
 <div id="AFKoverlay">
     <div><p>You have not been active for a while, thus random actions are chosen on your behalf. If you will not be active in time, you will not get payoff for the experiment. Please press here to return to the experiment.</p>
@@ -98,10 +100,10 @@
 {{ if player.round_number > 1 }}
 
     {{ if is_new_supergame }}
-
+        <br><br><br>
         Congradulations! you completed a super game. <br>
         You are now matched with a <b>another player</b>. <br>
-        Choose your first action in the game with him. <br>
+        Choose your first action in the game with him. <br><br><br><br>
 
     {{ endif }}
 
@@ -122,13 +124,14 @@
 <!-- General Game Info -->
 <div id='general_game_info' style='display: flex; justify-content: space-between; font-size: 1.25em; padding: 0px 20px 0px 20px;'>
     <span>
-        <b>Round {{player.round_number}} of {{C.NUM_ROUNDS}}</b>
     {{ if is_random_matching }}
-    {{else}}
-        Now playing with <b>Player #{{player.opponent_number}}</b>
-        <b>Round {{player.super_game_round_number}} of {{C.ROUNDS_PER_SUPERGAME}}</b> with that player.
-    {{endif}}
+        <b>Round {{player.round_number}}</b>
     </span>
+    {{else}}
+        <span>Now playing with <b>Player #{{player.opponent_number}} |</b> </span><span>
+        <b>Round {{player.super_game_round_number}} of {{C.ROUNDS_PER_SUPERGAME}}</b> with that player.</span>
+    {{endif}}
+    
 </div>
 
 <!-- Payoffs and Decision table -->
@@ -151,12 +154,18 @@
         </tr>
         <tr>
             <th rowspan="2" class="p1" id="you_cell"><span>You</span></th>
-            <td><button name="cooperate" value="True" class="btn btn-primary btn-large" id='cooperateBtn' onclick="action_clicked(this)">Choose<br>UP</button></td>
+            <td><button name="cooperate" 
+                {{if player.is_UPbutton_cooperation}} value="True" id='cooperateBtn' 
+                {{else}} value="False" id='defectBtn' {{endif}} class="btn btn-primary btn-large"
+                onclick="action_clicked(this)">Choose<br>UP</button></td>
             <td><div class="p1 col">{{ t_left.CC}}</div><br><div class="p2 col">{{t_right.CC}}</div></td>
             <td><div class="p1 col">{{ t_left.CD }}</div><br><div class="p2 col">{{t_right.CD}}</div></td>
         </tr>
         <tr>
-            <td><button name="cooperate" value="False" class="btn btn-primary btn-large" id='defectBtn' onclick="action_clicked(this)">Choose<br>DOWN</button></td>
+            <td><button name="cooperate"
+                {{if not player.is_UPbutton_cooperation}} value="True" id='cooperateBtn' 
+                {{else}} value="False" id='defectBtn' {{endif}} class="btn btn-primary btn-large" 
+                onclick="action_clicked(this)">Choose<br>DOWN</button></td>
             <td><div class="p1 col">{{t_left.DC}}</div><br><div class="p2 col">{{ t_right.DC }}</div></td>
             <td><div class="p1 col">{{t_left.DD}}</div><br><div class="p2 col">{{t_right.DD}}</div></td>
         </tr>
@@ -195,11 +204,15 @@
                 {{ for past_player in history }}
                     <tr>
                         <td>{{if is_random_matching}}{{past_player.round_number}}{{else}}{{ past_player.super_game_round_number}}{{endif}}</td>
-                        <td>{{ if past_player.cooperate }}UP{{ else }}DOWN{{ endif }}</td>
-                        <td>{{ past_player.payoff }}{{ if past_player.penalty > 0}} <i>(inc. penalty)</i>{{ endif }}</td> 
-                        <td style="text-decoration: line-through;">{{ past_player.forgone_payoff}}{{ if past_player.penalty > 0}} <i>(inc. penalty)</i>{{ endif }}</td> 
+                        <td>{{ if past_player.cooperate }}
+                                {{if is_UPbutton_cooperation}} UP {{else}} DOWN {{endif}}
+                            {{ else }}
+                                {{if is_UPbutton_cooperation}} DOWN {{else}} UP {{endif}}
+                            {{ endif }}</td>
+                        <td>{{ past_player.score }}{{ if past_player.penalty > 0}} <i>(inc. penalty)</i>{{ endif }}</td> 
+                        <td style="text-decoration: line-through;">{{ past_player.forgone_score}}{{ if past_player.penalty > 0}} <i>(inc. penalty)</i>{{ endif }}</td> 
                         <td>{{ if past_player.opponent_cooperate }}LEFT{{ else }}RIGHT{{ endif }}</td>
-                        <td>{{ past_player.opponent_payoff }}</td>
+                        <td>{{ past_player.opponent_score }}</td>
 
                     </tr>
                 {{ endfor }}
@@ -218,6 +231,8 @@
 </div>
 
 
+{{ if class_experiment}} Your player ID:{{participant.id_in_session}}<br> {{endif}}
+
 <script>
     let timerElement = document.getElementById('timer');
     let countdown = js_vars.time_limit.decision;
@@ -226,6 +241,7 @@
     let results_time = js_vars.time_limit.results;
     let timerInterval;
     let waitInterval;
+    const is_UPcooperation = js_vars.is_UPcooperation;
     const waiting_info_textEL = document.getElementById('waiting_info');
     const nextButton = document.querySelector('.otree-btn-next');
     // ensures the random action is invoked after page is loaded so that (orelse livesend won't work), also, that the AFK div was loaded
@@ -260,6 +276,7 @@
             if (js_vars.is_dropout) {AFK_overlay_div.style.display='block';}
             setTimeout(() => {
                 if (js_vars.is_dropout) {
+                    forminputs.is_dropout.value = true;
                     play_random_action();
                 }
             } , 500) //0.5sec to let player press his back
@@ -316,7 +333,7 @@
                 clearInterval(waitInterval);
                 waiting_info_textEL.innerHTML = "Please refresh the page"
                 waiting_timer_reset()
-                onLoad(forminputs.cooperate.value)
+                onLoad(toBool(forminputs.cooperate.value))
             }
         }, 1000);
     }
@@ -326,7 +343,11 @@
     function waiting_timer_stop() {
         clearInterval(waitInterval);
     }
+    function toBool(b) {
+        return b = (b === true || b === 'true' || b === 'True' || b === 'TRUE' || b === '1' || b === 1)
+    }
     function simulate_action_click(cooperate){
+        cooperate = toBool(cooperate)
         function simulate_click(cooperate){
             if (cooperate) {
                 action_clicked(document.getElementById('cooperateBtn'), false)
@@ -343,7 +364,7 @@
     }
     function play_random_action(){
         let rnd_cooperate = js_vars.cooperate ?? Math.random() < 0.5 // if desicion already made - don't use random
-        if (forminputs.cooperate.value !== "") {rnd_cooperate = forminputs.cooperate.value}
+        if (forminputs.cooperate.value != "") {rnd_cooperate = toBool(forminputs.cooperate.value)}
         simulate_action_click(rnd_cooperate)
     }
 
@@ -369,13 +390,14 @@
         showWaitingMessage()
     }
 
-    function display_resutls(me_cooperate, opponent_cooperate, payoffs_dict){
+    function display_resutls(me_cooperate, opponent_cooperate, scores_dict){
         resetTimer(results_time) // time to see results
         waiting_timer_stop()
         hideWaitingMessage()
            
         const dtable = document.getElementById('table1')
-        const resultRowIndex = me_cooperate ? 0 : 1;
+        let resultRowIndex = me_cooperate ? 0 : 1;
+        if(!is_UPcooperation) {resultRowIndex = me_cooperate ? 1 : 0};
         const resultColIndex = opponent_cooperate ? 0 : 1;  
 
             // highligh col
@@ -384,48 +406,47 @@
             
             // replace table text to results
         let value_to_text = function(v) {return (String(v) + ' points')};
-        const payoff_text = value_to_text(payoffs_dict.payoff)
-        const forgone_payoff_text = value_to_text(payoffs_dict.forgone)
-        const opponents_payoff_text = value_to_text(payoffs_dict.opponent_payoff)
+        const score_text = value_to_text(scores_dict.score)
+        const forgone_score_text = value_to_text(scores_dict.forgone)
+        const opponents_score_text = value_to_text(scores_dict.opponent_score)
 
             // iterate table cells to replace/delete text
         for (var i = 0, row; row = dtable.rows[i]; i++) {
             for (var j = 0, col; col = row.cells[j]; j++) {
-                var my_payoff_div = [...dtable.rows[i].cells[j].querySelectorAll(".col.p1")][0]
-                var opponents_payoff_div = [...dtable.rows[i].cells[j].querySelectorAll(".col.p2")][0]
+                var my_score_div = [...dtable.rows[i].cells[j].querySelectorAll(".col.p1")][0]
+                var opponents_score_div = [...dtable.rows[i].cells[j].querySelectorAll(".col.p2")][0]
                 
-                if (my_payoff_div==undefined){
+                if (my_score_div==undefined){
                     continue
                 }
-
-
 
                 let results_first_line_index = 2
                 let is_longer_table_line = (i==results_first_line_index)? 1 : 0; // Because 3rd row has 4 cols, while 4th row has 3 cols 
                 let my_selection_col = resultColIndex+1+is_longer_table_line
                 let my_selection_row = results_first_line_index + resultRowIndex
+                console.log(is_UPcooperation, resultRowIndex)
                 
-                if (j==my_selection_col) { // then results and forgone payoff goes here
-                    my_payoff_div.innerHTML = (i==my_selection_row)? payoff_text : forgone_payoff_text;
+                if (j==my_selection_col) { // then results and forgone score goes here
+                    my_score_div.innerHTML = (i==my_selection_row)? score_text : forgone_score_text;
                     if (i == my_selection_row) {
-                        opponents_payoff_div.innerHTML = opponents_payoff_text;
-                        opponents_payoff_div.classList.add('opponent_payoff')
-                        my_payoff_div.classList.add('result_payoff')
+                        opponents_score_div.innerHTML = opponents_score_text;
+                        opponents_score_div.classList.add('opponent_payoff')
+                        my_score_div.classList.add('result_payoff')
                         col.classList.add('highlightcell')
                     }
                     else {
-                        my_payoff_div.classList.add('forgone')
-                        opponents_payoff_div.classList.add('opacity');
+                        my_score_div.classList.add('forgone')
+                        opponents_score_div.classList.add('opacity');
                     }
                 }
                 else { // neither selection of forgone cells
-                    my_payoff_div.classList.add('opacity');
-                    opponents_payoff_div.classList.add('opacity');
+                    my_score_div.classList.add('opacity');
+                    opponents_score_div.classList.add('opacity');
                 }
             }
         }
 
-        set_textual_results(me_cooperate, opponent_cooperate, payoffs_dict.payoff, payoffs_dict.forgone, payoffs_dict.opponent_payoff, payoffs_dict.penalty)
+        set_textual_results(me_cooperate, opponent_cooperate, scores_dict.score, scores_dict.forgone, scores_dict.opponent_score, scores_dict.penalty)
         
             // add 'Next' button
         nextdiv = document.getElementById('next_button_container')
@@ -441,29 +462,36 @@
         }, 500)
     }
 
-    function set_textual_results(cooperate, opponent_cooperate, payoff, forgone, opponent_payoff, penalty) {
+    function set_textual_results(cooperate, opponent_cooperate, score, forgone, opponent_score, penalty) {
         const value_to_text = (v) => (v === 0 ? `got ${v}` : (v > 0 ? `gained ${v}` : `lost ${Math.abs(v)}`)) + ' points';
         const forgone_value_to_text = (v) => (v === 0 ? `gotten ${v}` : (v > 0 ? `gained ${v}` : `lost ${Math.abs(v)}`)) + ' points';
         const text_div = document.getElementById('textual_results');
 
-        const payoff_text = value_to_text(payoff);
+        const score_text = value_to_text(score);
         const forgone_text = forgone_value_to_text(forgone);
-        const opponent_payoff_text = value_to_text(opponent_payoff);
+        const opponent_score_text = value_to_text(opponent_score);
 
+        
+        let action_text = cooperate ? 'UP' : 'DOWN';
+        let forgone_action_text = cooperate ? 'DOWN' : 'UP';
+        if(!is_UPcooperation) {
+            action_text = cooperate ? 'DOWN' : 'UP';
+            forgone_action_text = cooperate ? 'UP' : 'DOWN';
+        };
         let text = `
             <p>
                 ${penalty === 0 ? 
-                `You chose <b><span class="p1">${cooperate ? 'UP' : 'DOWN'}</span></b> and the other player chose <span class="p2">${opponent_cooperate ? 'LEFT' : 'RIGHT'}</span>, hence 
-                you <b><span class="p1">${payoff_text}</span></b>.<br>
-                Had you chosen to play differently (i.e, ${!cooperate ? 'UP' : 'DOWN'}) you would have <span class="forgone_text">${forgone_text}</span><br>
-                The other player ${opponent_payoff_text}.` : 
+                `You chose <b><span class="p1">${action_text}</span></b> and the other player chose <span class="p2">${opponent_cooperate ? 'LEFT' : 'RIGHT'}</span>, hence 
+                you <b><span class="p1">${score_text}</span></b>.<br>
+                Had you chosen to play differently (i.e, ${forgone_action_text}) you would have <span class="forgone_text">${forgone_text}</span><br>
+                The other player ${opponent_score_text}.` : 
 
                 `<b>You received a penalty of ${penalty}, because you didn't take action in time</b>.<br>
-                The system automatically assigned you to play <b><span class="p1">${cooperate ? 'UP' : 'DOWN'}</span></b>.<br>
+                The system automatically assigned you to play <b><span class="p1">${action_text}</span></b>.<br>
                 The other player chose <span class="p2">${opponent_cooperate ? 'LEFT' : 'RIGHT'}</span>.<br>
-                As a result, you <b><span class="p1">${payoff_text}</span></b> (after penalty deduction).<br>
+                As a result, you <b><span class="p1">${score_text}</span></b> (after penalty deduction).<br>
                 If the system would have chosen differently, you would have <span class="forgone_text">${forgone_text}</span>.<br>
-                The other player ${opponent_payoff_text}.`}<br>
+                The other player ${opponent_score_text}.`}<br>
                 {{if is_random_matching}}<span><i> Note: you will be matched with a new partner for the next round.</i></span>{{endif}}
             </p>
         `;
@@ -481,12 +509,13 @@
         //       -. reduce times to 10 second action action/results. + 2 timeouts = drop out player (give him botton to say 'im back' bu until then he is replaced with random choice. dropout players Results page time should be set to 1 sec)
         //       5. handle when page gets refreshed - on load - check if action was already made, and if there are already results to display
         
+        
         if (data.opponent_cooperate == null ) {
             return;  //since we have data for 1 player only
         }
         console.log('data:', data)
-        display_resutls( data.cooperate ,data.opponent_cooperate, data.payoffs_dict)
-        if (js_vars.is_dropout && (data.payoffs_dict.penalty > 0)){nextButton.click()}
+        display_resutls( data.cooperate ,data.opponent_cooperate, data.scores_dict)
+        if (js_vars.is_dropout && (data.scores_dict.penalty > 0)){nextButton.click()}
     }
 
     // --- wait for other player masseges ---

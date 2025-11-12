@@ -36,10 +36,20 @@ Congratulations!<br>
 <p>
     You have finished the experiment!
 </p>
+
+    {{ if class_experiment}}
+      Your total score is <b>{{player.total_score}}.</b> <br>
+      Your average cooperation rate was: {{player.mean_cooperation}}<br>
+      Your player ID: {{participant.id_in_session}}<br>
+      <br><br>Thank you for your participation!<br>
+      {{ else }}
+
 <p>
-    Thank you for your participation.<br>You will receive {{show_up_fee}}£ for your participation.</p>
+    Thank you for your participation.<br>
+    You will receive {{show_up_fee}}£ for your participation.</p>
 <p>
-    Your total score is {{player.total_score}}. Therefore, you have a {{bonus_chance}}% chance to win a bonus of {{bonus_fee}}£.
+    Your total score is {{player.total_score}}. 
+    Therefore, you have a {{bonus_chance}}% chance to win a bonus of {{bonus_fee}}£.
 </p>
 <p>
     Press the button below to try and win the bonus.<br>A random number between 0 and 1 will appear. If your score-based number (that is, {{bonus_prob}}) will be bigger than the lottery number, you will earn the bonus!    
@@ -48,6 +58,7 @@ Congratulations!<br>
 <a href="#" id="lottery" class="button" onclick="changeLabel()">
     Click me to try for Bonus!
 </a>
+{{ endif }}
 
 <div id="FinalPayoffInfo">
     <p>
@@ -60,7 +71,7 @@ Congratulations!<br>
         {{ endif }}
     </p>
     <p>
-    <b>Hence, your total payoff is {{player.total_experiment_payoffGDP}}£.</b>
+    <b>Hence, your total payoff is {{player.total_experiment_payoffGBP}}£.</b>
     </p>
     To complete the experiment and qualify for the payoff, please answer a few brief questions on the next page.
     {{ next_button }}
