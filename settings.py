@@ -1,5 +1,5 @@
 from os import environ
-SESSION_CONFIG_DEFAULTS = dict(real_world_currency_per_point=0, 
+SESSION_CONFIG_DEFAULTS = dict(real_world_currency_per_point=1, 
                                participation_fee=6,
                                bonus_payment=6,
                                turned_away_fee=3,)
@@ -11,15 +11,39 @@ SESSION_CONFIGS = [
          use_browser_bots=False,
          game_type="EV-PD beh-CG",
          random_matching=True,
-         is_description=False,
+         is_description=True,
+         EV_display=True,
+         class_experiment=False,
+         ),
+    dict(name='test6bots',
+         num_demo_participants=6,
+         app_sequence=['prisoner', 'survey'],
+         use_browser_bots=True,
+         game_type="EV-CG beh-PD",
+         random_matching=True,
+         is_description=True,
+         EV_display=True,
+         class_experiment=False,
          ),
     dict(name='experiment_main',
          num_demo_participants=6,
          app_sequence=['prisoner', 'survey'],
          use_browser_bots=False,
-         game_type="EV-PD beh-CG",
+         game_type="EV-CG beh-PD",
+         random_matching=False,
+         is_description=True,
+         EV_display=False,
+         class_experiment=False,
+         ),
+    dict(name='experiment_main95',
+         num_demo_participants=6,
+         app_sequence=['prisoner', 'survey'],
+         use_browser_bots=False,
+         game_type="95EV-CG beh-PD",
          random_matching=True,
-         is_description=False,
+         is_description=True,
+         EV_display=False,
+         class_experiment=True,
          ),
     dict(
         name='forwrd_link',
@@ -40,21 +64,21 @@ LANGUAGE_CODE = 'en'
 REAL_WORLD_CURRENCY_CODE = 'GBP'
 USE_POINTS = True
 DEMO_PAGE_INTRO_HTML = ''
-PARTICIPANT_FIELDS = ['wait_page_arrival', 'is_dropout', 'total_score', 'chance_to_win', 'random_lottery_number', 'win_bonus', 'bonus']
+PARTICIPANT_FIELDS = ['total_score', 'chance_to_win', 'random_lottery_number', 'win_bonus', 'bonus', 'mean_cooperation']
 SESSION_FIELDS = []
 
 ROOMS = [
     dict(
         name='room1',
-        display_name='Room 1 pPD',
+        display_name='Room 1',
     ),
     dict(
         name='room2',
-        display_name='Room 2 pCG',
+        display_name='Room 2',
     ),
         dict(
         name='room3',
-        display_name='Room 3 PD',
+        display_name='Room 3',
     ),
     dict(
         name='room_turned_away',
